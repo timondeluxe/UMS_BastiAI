@@ -4,20 +4,24 @@ Configuration settings for the Umsetzer Chunking Pipeline
 
 import os
 from typing import Dict, Any, Optional
-from pydantic import Field
 
 # Handle different pydantic versions
 try:
     from pydantic_settings import BaseSettings
+    from pydantic import Field
 except ImportError:
     try:
-        from pydantic import BaseSettings
+        from pydantic import BaseSettings, Field
     except ImportError:
         # Create a simple BaseSettings fallback
         class BaseSettings:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
+        
+        # Simple Field fallback
+        def Field(default=None, description=None, **kwargs):
+            return default
 
 
 class ChunkingConfig(BaseSettings):
