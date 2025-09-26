@@ -95,20 +95,49 @@ class SupabaseClient:
         supabase_anon_key = getattr(settings, 'supabase_anon_key', None)
         supabase_service_role_key = getattr(settings, 'supabase_service_role_key', None)
         
+        # Debug logging
+        logger.info(f"Supabase URL: {'Set' if supabase_url else 'Not set'}")
+        logger.info(f"Supabase Publishable Key: {'Set' if supabase_publishable_key else 'Not set'}")
+        logger.info(f"Supabase Secret Key: {'Set' if supabase_secret_key else 'Not set'}")
+        logger.info(f"Supabase Anon Key: {'Set' if supabase_anon_key else 'Not set'}")
+        logger.info(f"Supabase Service Role Key: {'Set' if supabase_service_role_key else 'Not set'}")
+        
+        # Alternative: Try to load from environment variables directly
+        import os
+        if not supabase_url:
+            supabase_url = os.getenv('SUPABASE_URL')
+            logger.info(f"Trying direct env SUPABASE_URL: {'Set' if supabase_url else 'Not set'}")
+        if not supabase_publishable_key:
+            supabase_publishable_key = os.getenv('SUPABASE_PUBLISHABLE_KEY')
+            logger.info(f"Trying direct env SUPABASE_PUBLISHABLE_KEY: {'Set' if supabase_publishable_key else 'Not set'}")
+        if not supabase_secret_key:
+            supabase_secret_key = os.getenv('SUPABASE_SECRET_KEY')
+            logger.info(f"Trying direct env SUPABASE_SECRET_KEY: {'Set' if supabase_secret_key else 'Not set'}")
+        
         if not supabase_url:
             logger.warning("Supabase URL not found. Using mock client.")
             self.client = None
             self.mock_mode = True
         elif supabase_publishable_key and supabase_secret_key:
             # Use new API keys (recommended)
-            self.client: Client = create_client(supabase_url, supabase_secret_key)
-            self.mock_mode = False
-            logger.info("Using new Supabase API keys (sb_publishable_... and sb_secret_...)")
+            try:
+                self.client: Client = create_client(supabase_url, supabase_secret_key)
+                self.mock_mode = False
+                logger.info("Using new Supabase API keys (sb_publishable_... and sb_secret_...)")
+            except Exception as e:
+                logger.error(f"Failed to create Supabase client with new keys: {e}")
+                self.client = None
+                self.mock_mode = True
         elif supabase_anon_key and supabase_service_role_key:
             # Use legacy API keys (deprecated)
-            self.client: Client = create_client(supabase_url, supabase_service_role_key)
-            self.mock_mode = False
-            logger.warning("Using legacy Supabase API keys (anon/service_role). Please migrate to new keys by November 2025.")
+            try:
+                self.client: Client = create_client(supabase_url, supabase_service_role_key)
+                self.mock_mode = False
+                logger.warning("Using legacy Supabase API keys (anon/service_role). Please migrate to new keys by November 2025.")
+            except Exception as e:
+                logger.error(f"Failed to create Supabase client with legacy keys: {e}")
+                self.client = None
+                self.mock_mode = True
         else:
             logger.warning("Supabase credentials not found. Using mock client.")
             self.client = None
