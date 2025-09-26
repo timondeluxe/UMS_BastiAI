@@ -58,15 +58,20 @@ class EmbeddingConfig(BaseSettings):
 class DatabaseConfig(BaseSettings):
     """Configuration for Supabase database"""
     
-    supabase_url: str = Field(..., description="Supabase project URL")
-    supabase_key: str = Field(..., description="Supabase anon key")
-    supabase_service_key: str = Field(..., description="Supabase service role key")
+    # New API keys (recommended)
+    supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_publishable_key: str = Field(default="", description="Supabase publishable key")
+    supabase_secret_key: str = Field(default="", description="Supabase secret key")
+    
+    # Legacy keys (deprecated)
+    supabase_anon_key: str = Field(default="", description="Supabase anon key (legacy)")
+    supabase_service_role_key: str = Field(default="", description="Supabase service role key (legacy)")
     
     # Database settings
     table_name: str = Field(default="video_chunks", description="Table name for storing chunks")
     
     class Config:
-        env_prefix = "DB_"
+        env_prefix = "SUPABASE_"
 
 
 class TranscriptionConfig(BaseSettings):

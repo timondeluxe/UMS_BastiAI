@@ -420,6 +420,26 @@ def main():
                             st.write("**Grund:** Supabase-Credentials nicht gefunden")
                             st.write("**Lösung:** Fügen Sie Supabase-Credentials in Streamlit Cloud Secrets hinzu")
                             
+                            # Debug: Show what credentials are available
+                            st.subheader("🔍 Debug: Verfügbare Credentials")
+                            try:
+                                from config.settings import settings
+                                st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if settings.supabase_url else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if settings.supabase_publishable_key else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if settings.supabase_secret_key else '❌ Nicht gesetzt'}")
+                                st.write(f"**OPENAI_API_KEY:** {'✅ Gesetzt' if settings.openai_api_key else '❌ Nicht gesetzt'}")
+                                
+                                # Show actual values (masked for security)
+                                if settings.supabase_url:
+                                    st.write(f"**URL:** {settings.supabase_url[:20]}...")
+                                if settings.supabase_publishable_key:
+                                    st.write(f"**Publishable Key:** {settings.supabase_publishable_key[:20]}...")
+                                if settings.supabase_secret_key:
+                                    st.write(f"**Secret Key:** {settings.supabase_secret_key[:20]}...")
+                                    
+                            except Exception as e:
+                                st.error(f"Fehler beim Laden der Settings: {e}")
+                            
                             # Show mock data for testing
                             st.subheader("🧪 Mock-Daten für Tests")
                             if st.button("Mock-Daten aktivieren"):
