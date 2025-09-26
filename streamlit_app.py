@@ -488,31 +488,43 @@ def main():
                                     from supabase import create_client, Client
                                     
                                     # Try to get secrets directly from Streamlit
-                                    if hasattr(st.secrets, 'SUPABASE_URL') and hasattr(st.secrets, 'SUPABASE_SECRET_KEY'):
-                                        st.write("**Versuche direkte Verbindung...**")
+                                    st.write("**Verfügbare Secrets:**")
+                                    st.write(f"**st.secrets verfügbar:** {hasattr(st, 'secrets')}")
+                                    
+                                    if hasattr(st, 'secrets'):
+                                        st.write(f"**SUPABASE_URL in secrets:** {hasattr(st.secrets, 'SUPABASE_URL')}")
+                                        st.write(f"**SUPABASE_SECRET_KEY in secrets:** {hasattr(st.secrets, 'SUPABASE_SECRET_KEY')}")
                                         
-                                        # Create Supabase client directly
-                                        supabase_url = st.secrets.SUPABASE_URL
-                                        supabase_key = st.secrets.SUPABASE_SECRET_KEY
-                                        
-                                        client = create_client(supabase_url, supabase_key)
-                                        
-                                        # Test connection
-                                        result = client.table("video_chunks").select("*").limit(1).execute()
-                                        
-                                        if result.data:
-                                            st.success("✅ Supabase-Verbindung erfolgreich!")
-                                            st.write(f"**Gefundene Chunks:** {len(result.data)}")
-                                            st.write("**Erste Chunk:**")
-                                            st.write(result.data[0].get('chunk_text', '')[:100] + "...")
+                                        # Try to access secrets
+                                        try:
+                                            supabase_url = st.secrets.SUPABASE_URL
+                                            supabase_key = st.secrets.SUPABASE_SECRET_KEY
+                                            st.write(f"**URL geladen:** {supabase_url[:20]}...")
+                                            st.write(f"**Key geladen:** {supabase_key[:20]}...")
                                             
-                                            # Force agent to use real Supabase
-                                            st.session_state.mock_data_active = False
-                                            st.success("✅ Echte Supabase-Daten aktiviert!")
-                                        else:
-                                            st.warning("⚠️ Verbindung erfolgreich, aber keine Daten gefunden")
+                                            st.write("**Versuche direkte Verbindung...**")
+                                            
+                                            # Create Supabase client directly
+                                            client = create_client(supabase_url, supabase_key)
+                                            
+                                            # Test connection
+                                            result = client.table("video_chunks").select("*").limit(1).execute()
+                                            
+                                            if result.data:
+                                                st.success("✅ Supabase-Verbindung erfolgreich!")
+                                                st.write(f"**Gefundene Chunks:** {len(result.data)}")
+                                                st.write("**Erste Chunk:**")
+                                                st.write(result.data[0].get('chunk_text', '')[:100] + "...")
+                                                
+                                                # Force agent to use real Supabase
+                                                st.session_state.mock_data_active = False
+                                                st.success("✅ Echte Supabase-Daten aktiviert!")
+                                            else:
+                                                st.warning("⚠️ Verbindung erfolgreich, aber keine Daten gefunden")
+                                        except Exception as e:
+                                            st.error(f"❌ Fehler beim Zugriff auf Secrets: {e}")
                                     else:
-                                        st.error("❌ Supabase-Secrets nicht in Streamlit verfügbar")
+                                        st.error("❌ st.secrets nicht verfügbar")
                                         
                                 except Exception as e:
                                     st.error(f"❌ Direkte Verbindung fehlgeschlagen: {e}")
