@@ -483,8 +483,14 @@ def main():
                             
                             # Direct Supabase connection test
                             st.subheader("🔧 Direkte Supabase-Verbindung testen")
+                            
+                            # Simple test first
+                            st.write("**🔍 Einfacher Test...**")
+                            st.write(f"**st verfügbar:** {st is not None}")
+                            st.write(f"**st.secrets verfügbar:** {hasattr(st, 'secrets')}")
+                            
                             if st.button("Supabase direkt verbinden"):
-                                st.write("**🔍 Starte direkte Verbindung...**")
+                                st.write("**🔍 Button geklickt - starte direkte Verbindung...**")
                                 
                                 try:
                                     st.write("**Schritt 1: Importiere Supabase...**")
@@ -542,6 +548,8 @@ def main():
                                     st.write(f"**Fehlerdetails:** {str(e)}")
                                     import traceback
                                     st.write(f"**Traceback:** {traceback.format_exc()}")
+                            else:
+                                st.write("**⏳ Warten auf Button-Klick...**")
                         else:
                             st.success("✅ Supabase-Verbindung aktiv")
                             
