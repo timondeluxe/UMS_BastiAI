@@ -13,15 +13,28 @@ import time
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from src.agent.mini_chat_agent import MiniChatAgent
-from config.settings import settings
+# Safe imports with error handling
+try:
+    from src.agent.mini_chat_agent import MiniChatAgent
+    from config.settings import settings
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Imports erfolgreich geladen")
+except ImportError as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"❌ Import-Fehler: {e}")
+    st.error(f"Import-Fehler: {e}")
+    st.stop()
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"❌ Unerwarteter Fehler beim Import: {e}")
+    st.error(f"Unerwarteter Fehler: {e}")
+    st.stop()
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
