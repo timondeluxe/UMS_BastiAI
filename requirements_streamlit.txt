@@ -14,3 +14,6 @@ pandas>=2.0.0
 # Logging and utilities
 python-dateutil>=2.8.2
 typing-extensions>=4.7.0
+
+# Additional dependencies that might be missing
+tqdm>=4.65.0

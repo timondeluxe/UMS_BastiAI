@@ -63,4 +63,4 @@ logs/
 htmlcov/
 
 # Streamlit
-.streamlit/
+.streamlit/.git_token
