@@ -112,6 +112,8 @@ def initialize_session_state():
         st.session_state.debug_mode = False
     if 'basti_tone' not in st.session_state:
         st.session_state.basti_tone = True
+    if 'mock_data_active' not in st.session_state:
+        st.session_state.mock_data_active = False
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -119,6 +121,15 @@ def initialize_agent():
         try:
             with st.spinner("Initialisiere Chat Agent..."):
                 st.session_state.agent = MiniChatAgent()
+                
+                # Check if Supabase is in mock mode and auto-activate mock data
+                if hasattr(st.session_state.agent, 'video_processor'):
+                    supabase_client = st.session_state.agent.video_processor.supabase_client
+                    if supabase_client.mock_mode:
+                        st.session_state.mock_data_active = True
+                        logger.info("Supabase in mock mode - auto-activating mock data")
+                        st.info("🧪 Mock-Daten automatisch aktiviert (Supabase nicht verfügbar)")
+                
             st.success("Chat Agent erfolgreich initialisiert!")
             return True
         except Exception as e:
@@ -482,6 +493,8 @@ def main():
             st.write("• 'Was sind die wichtigsten Strategien für Unternehmer?'")
             st.write("• 'Was ist die 80/20-Regel?'")
             st.write("• 'Wie baue ich ein starkes Team auf?'")
+            st.write("• 'Was bedeutet Performance für dich?'")
+            st.write("• 'Wie eliminiere ich Ablenkungen?'")
         
         # Information
         st.subheader("ℹ️ Informationen")
