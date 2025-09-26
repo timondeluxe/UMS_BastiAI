@@ -1,0 +1,16 @@
+# Core dependencies - ACTUALLY USED
+openai>=1.0.0                    # Used in: whisper_client.py, embedding_generator.py, mini_chat_agent.py
+supabase>=2.0.0                  # Used in: embedding_generator.py
+pydantic>=2.0.0                  # Used in: whisper_client.py, metadata_extractor.py, audio_processor.py
+
+# Text processing - ACTUALLY USED
+numpy>=1.24.0                    # Used in: semantic_chunker.py
+
+# Utilities - ACTUALLY USED
+python-dotenv>=1.0.0             # Used in: config/settings.py
+tqdm>=4.65.0                     # Used in: embedding_generator.py
+
+# Development and testing - OPTIONAL
+pytest>=7.4.0                    # For running tests
+black>=23.0.0                    # Code formatting
+flake8>=6.0.0                    # Code linting
