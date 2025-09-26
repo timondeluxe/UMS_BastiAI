@@ -182,10 +182,103 @@ def process_question(question):
     """Process user question and return response"""
     if not st.session_state.agent:
         return None
-    
+
     try:
         start_time = time.time()
-        
+
+        # Check if mock data is active
+        if hasattr(st.session_state, 'mock_data_active') and st.session_state.mock_data_active:
+            # Use mock data for testing
+            mock_chunks = [
+                {
+                    "chunk_text": "Das ist ein Test-Video über Performance und Produktivität. In diesem Video sprechen wir über die wichtigsten Strategien für Unternehmer.",
+                    "start_timestamp": 0.0,
+                    "end_timestamp": 30.0,
+                    "speaker": "Bastian",
+                    "video_id": "test_video_001"
+                },
+                {
+                    "chunk_text": "Die wichtigsten Punkte sind: Erstens, fokussiere dich auf deine Kernkompetenzen. Zweitens, eliminiere alle Ablenkungen. Drittens, baue ein starkes Team auf.",
+                    "start_timestamp": 30.0,
+                    "end_timestamp": 60.0,
+                    "speaker": "Bastian",
+                    "video_id": "test_video_001"
+                },
+                {
+                    "chunk_text": "Performance bedeutet nicht nur harte Arbeit, sondern intelligente Arbeit. Nutze die 80/20-Regel und konzentriere dich auf die 20% der Aktivitäten, die 80% der Ergebnisse bringen.",
+                    "start_timestamp": 60.0,
+                    "end_timestamp": 90.0,
+                    "speaker": "Bastian",
+                    "video_id": "test_video_001"
+                }
+            ]
+            
+            # Build context from mock data
+            context_text = "\n\n".join([chunk["chunk_text"] for chunk in mock_chunks])
+            
+            # Generate answer using LLM with mock context
+            if st.session_state.basti_tone:
+                basti_system_prompt = """### Tone-of-Voice-Leitfaden „High-Energy Unternehmer-Coach"
+
+Verwende beim Text-Generieren konsequent die folgenden Stilregeln – sie bilden *den* Ton, mit dem die Videos kommunizieren:
+
+1. **Adresse & Haltung**  
+   * Sprich die Leserin/den Leser immer direkt mit **„du"** an.  
+   * Verwende eine **motivierende, coachende Haltung** – als würdest du einem Freund oder einer Freundin helfen, der/die gerade vor einer wichtigen Entscheidung steht.  
+   * Sei **ermutigend, aber ehrlich** – zeige auf, was möglich ist, aber verschweige nicht die Herausforderungen.
+
+2. **Sprache & Stil**  
+   * **Kurze, prägnante Sätze** – vermeide Schachtelsätze und komplizierte Konstruktionen.  
+   * **Aktive Formulierungen** – „Du entscheidest" statt „Es wird entschieden".  
+   * **Konkrete, bildhafte Sprache** – verwende Metaphern und Beispiele aus dem Alltag.  
+   * **Direkte Ansprache** – „Stell dir vor..." oder „Hier ist der Deal..."  
+
+3. **Emotionale Tonalität**  
+   * **Energiegeladen, aber nicht übertrieben** – du bist motiviert, aber nicht aufdringlich.  
+   * **Vertrauensvoll** – du weißt, wovon du sprichst, und das spürst du auch.  
+   * **Lösungsorientiert** – fokussiere dich auf das, was funktioniert, nicht auf Probleme.  
+
+4. **Strukturelle Elemente**  
+   * **Klare Gliederung** – verwende Absätze, Aufzählungen oder kurze Zwischenüberschriften.  
+   * **Handlungsaufforderungen** – gib konkrete, umsetzbare Tipps.  
+   * **Fragen einbauen** – „Was denkst du?" oder „Wie fühlst du dich dabei?"  
+
+5. **Beispiele für den richtigen Ton**  
+   * ✅ **Richtig:** „Du stehst vor einer großen Entscheidung – und das ist gut so! Hier ist, wie du sie meisterst..."  
+   * ✅ **Richtig:** „Stell dir vor, du könntest deine Zeit so nutzen, dass du mehr erreichen und trotzdem entspannter leben könntest. Klingt gut? Dann lass uns das angehen!"  
+   * ❌ **Falsch:** „Es ist wichtig, dass man seine Zeit effizient nutzt." (zu passiv, zu allgemein)  
+
+6. **Wichtige No-Gos**  
+   * **Keine Floskeln** – vermeide Phrasen wie „am Ende des Tages" oder „es ist, was es ist".  
+   * **Keine Übertreibungen** – „revolutionär" oder „bahnbrechend" nur, wenn es wirklich stimmt.  
+   * **Keine passiven Formulierungen** – „es wird empfohlen" → „ich empfehle dir".  
+
+Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
+
+                # Use custom system prompt for Basti tone
+                response = st.session_state.agent._generate_answer(question, context_text, basti_system_prompt)
+            else:
+                # Use default system prompt
+                response = st.session_state.agent._generate_answer(question, context_text)
+
+            processing_time = time.time() - start_time
+
+            # Prepare debug info
+            debug_info = {
+                'chunks_used': len(mock_chunks),
+                'total_chunks': len(mock_chunks),
+                'processing_time': f"{processing_time:.2f}",
+                'model': 'gpt-4o-mini',
+                'sources': [{"text": chunk["chunk_text"][:200] + "...", "timestamp": chunk["start_timestamp"], "speaker": chunk["speaker"]} for chunk in mock_chunks],
+                'basti_tone': st.session_state.basti_tone
+            }
+
+            return {
+                'answer': response,
+                'confidence': 0.85,  # High confidence for mock data
+                'debug_info': debug_info
+            }
+
         # Basti O-Ton System Prompt
         basti_system_prompt = """### Tone-of-Voice-Leitfaden „High-Energy Unternehmer-Coach"
 
@@ -325,6 +418,13 @@ def main():
                         if supabase_client.mock_mode:
                             st.warning("⚠️ Supabase im Mock-Modus - keine echte Verbindung")
                             st.write("**Grund:** Supabase-Credentials nicht gefunden")
+                            st.write("**Lösung:** Fügen Sie Supabase-Credentials in Streamlit Cloud Secrets hinzu")
+                            
+                            # Show mock data for testing
+                            st.subheader("🧪 Mock-Daten für Tests")
+                            if st.button("Mock-Daten aktivieren"):
+                                st.session_state.mock_data_active = True
+                                st.success("✅ Mock-Daten aktiviert! Sie können jetzt Fragen stellen.")
                         else:
                             st.success("✅ Supabase-Verbindung aktiv")
                             
@@ -354,6 +454,14 @@ def main():
                 except Exception as e:
                     st.error(f"Fehler beim Testen: {e}")
                     st.write(f"**Fehlerdetails:** {str(e)}")
+        
+        # Mock data status
+        if hasattr(st.session_state, 'mock_data_active') and st.session_state.mock_data_active:
+            st.success("🧪 Mock-Daten aktiv - Sie können jetzt Fragen stellen!")
+            st.write("**Test-Fragen:**")
+            st.write("• 'Was sind die wichtigsten Strategien für Unternehmer?'")
+            st.write("• 'Was ist die 80/20-Regel?'")
+            st.write("• 'Wie baue ich ein starkes Team auf?'")
         
         # Information
         st.subheader("ℹ️ Informationen")
