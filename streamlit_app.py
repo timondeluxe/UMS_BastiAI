@@ -368,6 +368,10 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Initialize variables to avoid UnboundLocalError
+    debug_mode = False
+    basti_tone = True
+    
     # Header
     st.markdown('<h1 class="main-header">🤖 BastiAI</h1>', unsafe_allow_html=True)
     
