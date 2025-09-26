@@ -435,10 +435,31 @@ def main():
                             st.subheader("🔍 Debug: Verfügbare Credentials")
                             try:
                                 from config.settings import settings
+                                import os
+                                
+                                # Check settings first
+                                st.write("**Via Settings:**")
                                 st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if settings.supabase_url else '❌ Nicht gesetzt'}")
                                 st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if settings.supabase_publishable_key else '❌ Nicht gesetzt'}")
                                 st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if settings.supabase_secret_key else '❌ Nicht gesetzt'}")
                                 st.write(f"**OPENAI_API_KEY:** {'✅ Gesetzt' if settings.openai_api_key else '❌ Nicht gesetzt'}")
+                                
+                                # Check environment variables directly
+                                st.write("**Via Environment Variables:**")
+                                st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if os.getenv('SUPABASE_URL') else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if os.getenv('SUPABASE_PUBLISHABLE_KEY') else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if os.getenv('SUPABASE_SECRET_KEY') else '❌ Nicht gesetzt'}")
+                                
+                                # Check Streamlit secrets directly
+                                st.write("**Via Streamlit Secrets:**")
+                                try:
+                                    import streamlit as st
+                                    secrets = st.secrets
+                                    st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_URL') else '❌ Nicht gesetzt'}")
+                                    st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_PUBLISHABLE_KEY') else '❌ Nicht gesetzt'}")
+                                    st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_SECRET_KEY') else '❌ Nicht gesetzt'}")
+                                except Exception as e:
+                                    st.write(f"**Streamlit Secrets Error:** {e}")
                                 
                                 # Show actual values (masked for security)
                                 if settings.supabase_url:
@@ -456,6 +477,43 @@ def main():
                             if st.button("Mock-Daten aktivieren"):
                                 st.session_state.mock_data_active = True
                                 st.success("✅ Mock-Daten aktiviert! Sie können jetzt Fragen stellen.")
+                            
+                            # Direct Supabase connection test
+                            st.subheader("🔧 Direkte Supabase-Verbindung testen")
+                            if st.button("Supabase direkt verbinden"):
+                                try:
+                                    import streamlit as st
+                                    from supabase import create_client, Client
+                                    
+                                    # Try to get secrets directly from Streamlit
+                                    if hasattr(st.secrets, 'SUPABASE_URL') and hasattr(st.secrets, 'SUPABASE_SECRET_KEY'):
+                                        st.write("**Versuche direkte Verbindung...**")
+                                        
+                                        # Create Supabase client directly
+                                        supabase_url = st.secrets.SUPABASE_URL
+                                        supabase_key = st.secrets.SUPABASE_SECRET_KEY
+                                        
+                                        client = create_client(supabase_url, supabase_key)
+                                        
+                                        # Test connection
+                                        result = client.table("video_chunks").select("*").limit(1).execute()
+                                        
+                                        if result.data:
+                                            st.success("✅ Supabase-Verbindung erfolgreich!")
+                                            st.write(f"**Gefundene Chunks:** {len(result.data)}")
+                                            st.write("**Erste Chunk:**")
+                                            st.write(result.data[0].get('chunk_text', '')[:100] + "...")
+                                            
+                                            # Force agent to use real Supabase
+                                            st.session_state.mock_data_active = False
+                                            st.success("✅ Echte Supabase-Daten aktiviert!")
+                                        else:
+                                            st.warning("⚠️ Verbindung erfolgreich, aber keine Daten gefunden")
+                                    else:
+                                        st.error("❌ Supabase-Secrets nicht in Streamlit verfügbar")
+                                        
+                                except Exception as e:
+                                    st.error(f"❌ Direkte Verbindung fehlgeschlagen: {e}")
                         else:
                             st.success("✅ Supabase-Verbindung aktiv")
                             
