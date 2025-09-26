@@ -313,6 +313,48 @@ def main():
         
         st.divider()
         
+        # Debug Supabase connection
+        st.subheader("🔍 Debug Supabase")
+        if st.button("Supabase-Verbindung testen"):
+            with st.spinner("Teste Supabase-Verbindung..."):
+                try:
+                    if st.session_state.agent:
+                        # Test Supabase connection
+                        supabase_client = st.session_state.agent.video_processor.supabase_client
+                        
+                        if supabase_client.mock_mode:
+                            st.warning("⚠️ Supabase im Mock-Modus - keine echte Verbindung")
+                            st.write("**Grund:** Supabase-Credentials nicht gefunden")
+                        else:
+                            st.success("✅ Supabase-Verbindung aktiv")
+                            
+                            # Test search
+                            test_query = "Performance"
+                            st.write(f"**Test-Suche:** '{test_query}'")
+                            
+                            results = supabase_client.search_similar_chunks(
+                                [0.1] * 1536,  # Dummy embedding
+                                limit=5
+                            )
+                            
+                            st.write(f"**Gefundene Chunks:** {len(results)}")
+                            
+                            if results:
+                                st.success("✅ Chunks gefunden!")
+                                for i, chunk in enumerate(results[:3]):
+                                    st.write(f"{i+1}. {chunk.get('chunk_text', '')[:100]}...")
+                            else:
+                                st.warning("⚠️ Keine Chunks gefunden")
+                                st.write("**Mögliche Gründe:**")
+                                st.write("• Keine Daten in der Datenbank")
+                                st.write("• Falsche Tabellenstruktur")
+                                st.write("• Embedding-Dimensionen stimmen nicht überein")
+                    else:
+                        st.error("Agent nicht initialisiert")
+                except Exception as e:
+                    st.error(f"Fehler beim Testen: {e}")
+                    st.write(f"**Fehlerdetails:** {str(e)}")
+        
         # Information
         st.subheader("ℹ️ Informationen")
         st.info("""
@@ -321,6 +363,7 @@ def main():
         - Vertrauens-Score für Antworten
         - Debug-Modus für detaillierte Infos
         - Chat-Verlauf
+        - Test-Daten hinzufügen
         """)
     
     # Main content area
