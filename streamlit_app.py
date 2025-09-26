@@ -457,7 +457,6 @@ def main():
                                 # Check Streamlit secrets directly
                                 st.write("**Via Streamlit Secrets:**")
                                 try:
-                                    import streamlit as st
                                     secrets = st.secrets
                                     st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_URL') else '❌ Nicht gesetzt'}")
                                     st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_PUBLISHABLE_KEY') else '❌ Nicht gesetzt'}")
@@ -486,7 +485,6 @@ def main():
                             st.subheader("🔧 Direkte Supabase-Verbindung testen")
                             if st.button("Supabase direkt verbinden"):
                                 try:
-                                    import streamlit as st
                                     from supabase import create_client, Client
                                     
                                     # Try to get secrets directly from Streamlit
