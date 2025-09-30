@@ -10,21 +10,29 @@ from datetime import datetime
 import time
 import os
 
-# Add project root to Python path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
-
-# Safe imports with error handling
+# Setup imports for cloud deployment
 try:
-    from src.agent.mini_chat_agent import MiniChatAgent
-    from config.settings import settings
+    from import_helper import setup_imports, get_agent, get_settings
+    setup_imports()
+    MiniChatAgent = get_agent()
+    settings = get_settings()
     logger = logging.getLogger(__name__)
     logger.info("✅ Imports erfolgreich geladen")
 except ImportError as e:
-    logger = logging.getLogger(__name__)
-    logger.error(f"❌ Import-Fehler: {e}")
-    st.error(f"Import-Fehler: {e}")
-    st.stop()
+    # Fallback to direct imports
+    project_root = Path(__file__).parent
+    sys.path.insert(0, str(project_root))
+    
+    try:
+        from src.agent.mini_chat_agent import MiniChatAgent
+        from config.settings import settings
+        logger = logging.getLogger(__name__)
+        logger.info("✅ Imports erfolgreich geladen (fallback)")
+    except ImportError as e2:
+        logger = logging.getLogger(__name__)
+        logger.error(f"❌ Import-Fehler: {e2}")
+        st.error(f"Import-Fehler: {e2}")
+        st.stop()
 except Exception as e:
     logger = logging.getLogger(__name__)
     logger.error(f"❌ Unerwarteter Fehler beim Import: {e}")
