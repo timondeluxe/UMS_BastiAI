@@ -59,14 +59,17 @@ st.markdown("""
         border-radius: 10px;
         margin: 1rem 0;
         border-left: 4px solid #1f77b4;
+        color: #333333;
     }
     .user-message {
         background-color: #f0f2f6;
         border-left-color: #ff6b6b;
+        color: #333333;
     }
     .bot-message {
         background-color: #e8f4fd;
         border-left-color: #1f77b4;
+        color: #333333;
     }
     .debug-info {
         background-color: #fff3cd;
@@ -75,6 +78,7 @@ st.markdown("""
         padding: 0.5rem;
         margin: 0.5rem 0;
         font-size: 0.8rem;
+        color: #333333;
     }
     .confidence-badge {
         display: inline-block;
@@ -95,7 +99,24 @@ st.markdown("""
         background-color: #f8d7da;
         color: #721c24;
     }
+    .chat-input-container {
+        position: sticky;
+        bottom: 0;
+        background-color: white;
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        margin-top: 1rem;
+    }
+    .chat-messages-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem 0;
+    }
+    .stTextArea > div > div > textarea {
+        height: 120px !important;
+    }
 </style>
+
 """, unsafe_allow_html=True)
 
 def get_confidence_class(confidence):
@@ -127,6 +148,8 @@ def initialize_session_state():
         st.session_state.basti_tone = True
     if 'mock_data_active' not in st.session_state:
         st.session_state.mock_data_active = False
+    if 'clarification_mode' not in st.session_state:
+        st.session_state.clarification_mode = True
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -152,55 +175,74 @@ def initialize_agent():
     return True
 
 def display_chat_history():
-    """Display chat history"""
+    """Display chat history with newest messages at the bottom"""
     if not st.session_state.chat_history:
         st.info("Noch keine Unterhaltung gestartet. Stellen Sie eine Frage!")
         return
     
-    for i, message in enumerate(st.session_state.chat_history):
-        if message['type'] == 'user':
-            st.markdown(f"""
-            <div class="chat-message user-message">
-                <strong>Du:</strong> {message['content']}
-                <br><small>{message['timestamp']}</small>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        elif message['type'] == 'bot':
-            confidence_class = get_confidence_class(message['confidence'])
-            st.markdown(f"""
-            <div class="chat-message bot-message">
-                <strong>🤖 Basti:</strong> {message['content']}
-                <br>
-                <span class="confidence-badge {confidence_class}">
-                    Vertrauen: {message['confidence']:.1%}
-                </span>
-                <br><small>{message['timestamp']}</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Show debug information if enabled
-            if st.session_state.debug_mode and 'debug_info' in message:
-                debug_info = message['debug_info']
-                basti_tone_status = "✅ Aktiviert" if debug_info.get('basti_tone', False) else "❌ Deaktiviert"
+    # Create a container for the chat messages
+    chat_container = st.container()
+    
+    with chat_container:
+        for i, message in enumerate(st.session_state.chat_history):
+            if message['type'] == 'user':
                 st.markdown(f"""
-                <div class="debug-info">
-                    <strong>Debug Info:</strong><br>
-                    • Verwendete Chunks: {debug_info.get('chunks_used', 'N/A')}<br>
-                    • Gefundene Chunks: {debug_info.get('total_chunks', 'N/A')}<br>
-                    • Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s<br>
-                    • Modell: {debug_info.get('model', 'N/A')}<br>
-                    • Basti O-Ton: {basti_tone_status}
+                <div class="chat-message user-message">
+                    <strong>Du:</strong> {message['content']}
                 </div>
                 """, unsafe_allow_html=True)
+                st.caption(f"🕒 {message['timestamp']}")
+            
+            elif message['type'] == 'bot':
+                confidence_class = get_confidence_class(message['confidence'])
                 
-                # Show sources if available
-                if 'sources' in debug_info and debug_info['sources']:
-                    with st.expander("📚 Quellen anzeigen"):
-                        for j, source in enumerate(debug_info['sources'][:3], 1):
-                            st.write(f"**{j}.** [{format_timestamp(source.get('timestamp', 0))}] "
-                                   f"{source.get('speaker', 'Unknown')}: "
-                                   f"{source.get('text', '')[:200]}...")
+                # Check if this is a clarification message
+                is_clarification = message.get('clarification_mode', False)
+                bot_icon = "🤔" if is_clarification else "🤖"
+                bot_name = "Basti (Nachfrage)" if is_clarification else "Basti"
+                
+                st.markdown(f"""
+                <div class="chat-message bot-message">
+                    <strong>{bot_icon} {bot_name}:</strong> {message['content']}
+                    <br>
+                    <span class="confidence-badge {confidence_class}">
+                        Vertrauen: {message['confidence']:.1%}
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                st.caption(f"🕒 {message['timestamp']}")
+                
+                # Show debug information if enabled
+                if st.session_state.debug_mode and 'debug_info' in message:
+                    debug_info = message['debug_info']
+                    basti_tone_status = "✅ Aktiviert" if debug_info.get('basti_tone', False) else "❌ Deaktiviert"
+                    clarification_status = "✅ Aktiviert" if debug_info.get('clarification_mode', False) else "❌ Deaktiviert"
+                    
+                    st.markdown(f"""
+                    <div class="debug-info">
+                        <strong>Debug Info:</strong><br>
+                        • Verwendete Chunks: {debug_info.get('chunks_used', 'N/A')}<br>
+                        • Gefundene Chunks: {debug_info.get('total_chunks', 'N/A')}<br>
+                        • Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s<br>
+                        • Modell: {debug_info.get('model', 'N/A')}<br>
+                        • Basti O-Ton: {basti_tone_status}<br>
+                        • Nachfrage-Modus: {clarification_status}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show sources if available (without HTML snippets)
+                    if 'sources' in debug_info and debug_info['sources']:
+                        with st.expander("📚 Quellen anzeigen"):
+                            for j, source in enumerate(debug_info['sources'][:3], 1):
+                                # Clean text from HTML tags
+                                clean_text = source.get('text', '')
+                                if '<' in clean_text and '>' in clean_text:
+                                    import re
+                                    clean_text = re.sub(r'<[^>]+>', '', clean_text)
+                                
+                                st.write(f"**{j}.** [{format_timestamp(source.get('timestamp', 0))}] "
+                                       f"{source.get('speaker', 'Unknown')}: "
+                                       f"{clean_text[:200]}...")
 
 def process_question(question):
     """Process user question and return response"""
@@ -361,7 +403,8 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             'processing_time': f"{processing_time:.2f}",
             'model': 'gpt-4o-mini',
             'sources': response.get('sources', []),
-            'basti_tone': st.session_state.basti_tone
+            'basti_tone': st.session_state.basti_tone,
+            'clarification_mode': response.get('clarification_mode', False)
         }
         
         return {
@@ -408,6 +451,18 @@ def main():
         )
         st.session_state.basti_tone = basti_tone
         
+        # Nachfrage-Modus toggle
+        clarification_mode = st.checkbox(
+            "🤔 Nachfrage-Modus aktivieren", 
+            value=st.session_state.clarification_mode,
+            help="Aktiviert automatische Nachfragen bei unspezifischen Fragen (Standard: aktiviert)"
+        )
+        st.session_state.clarification_mode = clarification_mode
+        
+        # Update agent clarification mode if agent exists
+        if st.session_state.agent:
+            st.session_state.agent.toggle_clarification_mode(clarification_mode)
+        
         # Check URL parameters for debug mode
         query_params = st.query_params
         if 'debug' in query_params:
@@ -422,6 +477,14 @@ def main():
         st.subheader("🤖 Basti Status")
         if st.session_state.agent:
             st.success("✅ Basti bereit")
+            
+            # Show clarification mode status
+            if hasattr(st.session_state.agent, 'is_clarification_mode_enabled'):
+                clarification_enabled = st.session_state.agent.is_clarification_mode_enabled()
+                if clarification_enabled:
+                    st.info("🤔 Nachfrage-Modus: Aktiv")
+                else:
+                    st.warning("🤔 Nachfrage-Modus: Inaktiv")
         else:
             st.warning("⚠️ Basti nicht initialisiert")
         
@@ -612,65 +675,93 @@ def main():
         - Debug-Modus für detaillierte Infos
         - Chat-Verlauf
         - Test-Daten hinzufügen
+        - Nachfrage-Modus für spezifische Antworten
         """)
+        
+        # Nachfrage-Modus Info
+        if st.session_state.clarification_mode:
+            st.success("""
+            **🤔 Nachfrage-Modus aktiv:**
+            - Erkennt unspezifische Fragen automatisch
+            - Stellt gezielte Nachfragen für bessere Antworten
+            - Verwendet GPT-4o für intelligente Nachfragen
+            """)
     
-    # Main content area
+    # Initialize agent if not done
+    if not initialize_agent():
+        st.stop()
+    
+    # Main content area with chat layout
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        # Initialize agent if not done
-        if not initialize_agent():
-            st.stop()
-        
         # Chat interface
         st.subheader("💬 Chat")
         
-        # Question input
-        question = st.text_input(
-            "Stellen Sie eine Frage zu den Video-Inhalten:",
-            placeholder="z.B. Was ist das Hauptthema des Videos?",
-            key="question_input"
-        )
+        # Display chat history first (at the top)
+        display_chat_history()
         
-        # Process button
-        col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 2])
+        # Chat input at the bottom
+        st.divider()
         
-        with col_btn1:
-            if st.button("🚀 Senden", type="primary"):
-                if question.strip():
-                    # Add user message to history
-                    user_message = {
-                        'type': 'user',
-                        'content': question,
-                        'timestamp': datetime.now().strftime("%H:%M:%S")
+        # Center the input section
+        col_left, col_center, col_right = st.columns([1, 3, 1])
+        
+        with col_center:
+            # Use form for proper Enter key handling
+            with st.form(key="question_form", clear_on_submit=True):
+                col_input, col_send = st.columns([7.5, 1.5])
+                
+                with col_input:
+                    question = st.text_area(
+                        "Stellen Sie eine Frage zu den Video-Inhalten:",
+                        placeholder="z.B. Was ist das Hauptthema des Videos?",
+                        key="question_input",
+                        label_visibility="collapsed",
+                        height=120  # 4-5 lines height
+                    )
+                
+                with col_send:
+                    # Submit button inside form
+                    form_submitted = st.form_submit_button(
+                        "Go", 
+                        type="primary", 
+                        use_container_width=True
+                    )
+        
+        # Process question if form submitted
+        if form_submitted:
+            if question.strip():
+                # Add user message to history
+                user_message = {
+                    'type': 'user',
+                    'content': question,
+                    'timestamp': datetime.now().strftime("%H:%M:%S")
+                }
+                st.session_state.chat_history.append(user_message)
+                
+                # Process question
+                with st.spinner("Suche nach relevanten Inhalten..."):
+                    response = process_question(question)
+                
+                if response:
+                    # Add bot response to history
+                    bot_message = {
+                        'type': 'bot',
+                        'content': response['answer'],
+                        'confidence': response['confidence'],
+                        'timestamp': datetime.now().strftime("%H:%M:%S"),
+                        'debug_info': response['debug_info'],
+                        'clarification_mode': response.get('clarification_mode', False)
                     }
-                    st.session_state.chat_history.append(user_message)
-                    
-                    # Process question
-                    with st.spinner("Suche nach relevanten Inhalten..."):
-                        response = process_question(question)
-                    
-                    if response:
-                        # Add bot response to history
-                        bot_message = {
-                            'type': 'bot',
-                            'content': response['answer'],
-                            'confidence': response['confidence'],
-                            'timestamp': datetime.now().strftime("%H:%M:%S"),
-                            'debug_info': response['debug_info']
-                        }
-                        st.session_state.chat_history.append(bot_message)
-                        
-                        # Rerun to update display
-                        st.rerun()
-                    else:
-                        st.error("Konnte keine Antwort generieren.")
-                else:
-                    st.warning("Bitte geben Sie eine Frage ein.")
-        
-        with col_btn2:
-            if st.button("🔄 Aktualisieren"):
+                    st.session_state.chat_history.append(bot_message)
+                
+                # Form automatically clears on submit
+                
+                # Rerun to update display
                 st.rerun()
+            else:
+                st.warning("Bitte geben Sie eine Frage ein.")
     
     with col2:
         # Statistics
@@ -687,10 +778,6 @@ def main():
         if bot_messages > 0:
             avg_confidence = sum([m['confidence'] for m in st.session_state.chat_history if m['type'] == 'bot']) / bot_messages
             st.metric("Ø Vertrauen", f"{avg_confidence:.1%}")
-    
-    # Display chat history
-    st.divider()
-    display_chat_history()
     
     # Footer
     st.divider()

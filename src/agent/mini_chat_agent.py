@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
+import re
 
 from openai import OpenAI
 from config.settings import settings
@@ -13,6 +14,236 @@ from src.embedding.embedding_generator import VideoProcessor
 
 
 logger = logging.getLogger(__name__)
+
+
+class ClarificationMode:
+    """Nachfrage-Modus für unspezifische Fragen"""
+    
+    def __init__(self, openai_client, video_processor):
+        self.openai_client = openai_client
+        self.video_processor = video_processor
+        self.clarification_history = []
+        
+    def is_question_too_vague(self, question: str) -> bool:
+        """Erkennt, ob eine Frage zu unspezifisch ist"""
+        
+        # Typische unspezifische Muster
+        vague_patterns = [
+            r"ich möchte (.*)",  # "ich möchte abnehmen"
+            r"ich will (.*)",     # "ich will mehr Leads"
+            r"ich brauche (.*)",  # "ich brauche Hilfe"
+            r"wie kann ich (.*)", # "wie kann ich erfolgreich sein"
+            r"was soll ich (.*)", # "was soll ich tun"
+            r"hilf mir (.*)",     # "hilf mir"
+            r"ich habe ein problem", # "ich habe ein Problem"
+            r"ich weiß nicht (.*)", # "ich weiß nicht was"
+        ]
+        
+        question_lower = question.lower().strip()
+        
+        # Prüfe auf unspezifische Muster
+        for pattern in vague_patterns:
+            if re.search(pattern, question_lower):
+                return True
+        
+        # Prüfe auf sehr kurze oder generische Fragen
+        if len(question.split()) <= 3:
+            return True
+            
+        # Prüfe auf generische Wörter ohne Kontext
+        generic_words = ["hilfe", "problem", "tun", "machen", "erfolg", "besser", "mehr", "weniger"]
+        if any(word in question_lower for word in generic_words) and len(question.split()) <= 5:
+            return True
+            
+        return False
+    
+    def is_question_specific_enough(self, question: str) -> bool:
+        """Erkennt, ob eine Frage spezifisch genug ist für eine Antwort"""
+        
+        question_lower = question.lower().strip()
+        
+        # Spezifische Indikatoren
+        specific_indicators = [
+            "kg", "kilo", "woche", "tag", "stunde", "minute",  # Zeit/Gewicht
+            "sport", "training", "laufen", "fitness", "gym",   # Sport
+            "fleisch", "gemüse", "obst", "wasser", "kalorien", # Ernährung
+            "leads", "kunden", "verkauf", "marketing", "social media", # Business
+            "euro", "dollar", "budget", "kosten", "preis",     # Finanzen
+            "team", "mitarbeiter", "angestellte", "freelancer", # Personal
+            "website", "online", "shop", "app", "software"     # Technologie
+        ]
+        
+        # Zähle spezifische Indikatoren
+        specific_count = sum(1 for indicator in specific_indicators if indicator in question_lower)
+        
+        # Frage ist spezifisch genug wenn:
+        # 1. Mindestens 2 spezifische Indikatoren vorhanden sind
+        # 2. Oder die Frage länger als 10 Wörter ist
+        # 3. Oder konkrete Zahlen enthalten sind
+        has_numbers = bool(re.search(r'\d+', question))
+        
+        return (specific_count >= 2 or 
+                len(question.split()) > 10 or 
+                has_numbers)
+    
+    def generate_clarification_questions(self, question: str, context_chunks: List[Dict[str, Any]]) -> str:
+        """Generiert spezifische Nachfragen basierend auf der ursprünglichen Frage und dem Kontext"""
+        
+        # Baue Kontext für die Nachfrage-Generierung
+        context_text = self._build_context_for_clarification(context_chunks)
+        
+        clarification_prompt = f"""Du bist ein erfahrener Coach, der gezielt nachfragt, um spezifische Antworten zu geben.
+
+Ursprüngliche Frage: "{question}"
+
+Verfügbarer Kontext aus den Videos:
+{context_text}
+
+Deine Aufgabe: Erkenne, was in der ursprünglichen Frage zu unspezifisch ist und stelle 3-5 gezielte Nachfragen, die dem Fragesteller helfen, seine Frage zu präzisieren. Nutze dabei den verfügbaren Kontext, um relevante Nachfragen zu stellen.
+
+Beispiele für gute Nachfragen:
+- Bei "ich möchte abnehmen": "Wie viel möchtest du abnehmen? Wie viel Sport machst du aktuell? Wie ernährst du dich gerade? Welche Diäten hast du schon probiert?"
+- Bei "ich möchte mehr Leads": "Für welches Produkt/Service möchtest du mehr Leads? In welchem Bereich arbeitest du? Was machst du bereits für Lead-Generierung?"
+
+Stelle die Nachfragen in einem freundlichen, aber direkten Ton. Verwende "du" und sei konkret.
+Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",  # Verwende GPT-4o für bessere Nachfragen
+                messages=[
+                    {"role": "system", "content": "Du bist ein erfahrener Coach, der gezielt nachfragt."},
+                    {"role": "user", "content": clarification_prompt}
+                ],
+                max_tokens=300,
+                temperature=0.3
+            )
+            
+            clarification = response.choices[0].message.content.strip()
+            
+            # Speichere in der Historie
+            self.clarification_history.append({
+                "original_question": question,
+                "clarification": clarification,
+                "timestamp": self._get_timestamp()
+            })
+            
+            return clarification
+            
+        except Exception as e:
+            logger.error(f"Clarification generation failed: {e}")
+            return "Könntest du deine Frage etwas spezifischer stellen? Was genau möchtest du wissen?"
+    
+    def generate_answer_with_followup_questions(self, question: str, context_chunks: List[Dict[str, Any]], system_prompt: Optional[str] = None) -> Dict[str, Any]:
+        """Generiert eine Antwort UND weitere Nachfragen für noch bessere Hilfe"""
+        
+        # Baue Kontext für die Antwort
+        context_text = self._build_context_for_clarification(context_chunks)
+        
+        # Generiere Antwort mit dem bereitgestellten System-Prompt
+        if system_prompt:
+            answer_prompt = f"""Kontext aus dem Video:
+{context_text}
+
+Frage: {question}
+
+Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
+        else:
+            answer_prompt = f"""Du bist ein hilfreicher Assistent, der Fragen zu Video-Inhalten beantwortet.
+
+Kontext aus dem Video:
+{context_text}
+
+Frage: {question}
+
+Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich. Verwende deutsche Sprache und sei präzise."""
+
+        try:
+            # Generiere Antwort
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt or "Du bist ein hilfreicher Assistent für Video-Inhalte."},
+                    {"role": "user", "content": answer_prompt}
+                ],
+                max_tokens=400,
+                temperature=0.1
+            )
+            
+            answer = response.choices[0].message.content.strip()
+            
+            # Generiere weitere Nachfragen für noch bessere Hilfe
+            followup_prompt = f"""Du bist ein erfahrener Coach. Du hast gerade eine Antwort gegeben, aber möchtest noch gezielter helfen.
+
+Ursprüngliche Frage: "{question}"
+Deine Antwort: "{answer}"
+
+Verfügbarer Kontext aus den Videos:
+{context_text}
+
+Deine Aufgabe: Stelle 2-3 zusätzliche Nachfragen, die dem Fragesteller helfen, sein Problem noch besser zu lösen. Diese sollten tiefer gehen als die ursprüngliche Frage.
+
+Beispiele:
+- Bei Gewichtsabnahme: "Wie ist dein Schlafrhythmus? Trinkst du genug Wasser? Hast du Stress?"
+- Bei Lead-Generierung: "Wie ist deine aktuelle Website? Nutzt du Social Media? Hast du ein Budget?"
+
+Stelle die Nachfragen in einem freundlichen, aber direkten Ton. Verwende "du" und sei konkret.
+Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
+
+            followup_response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Du bist ein erfahrener Coach, der gezielt nachfragt."},
+                    {"role": "user", "content": followup_prompt}
+                ],
+                max_tokens=200,
+                temperature=0.3
+            )
+            
+            followup_questions = followup_response.choices[0].message.content.strip()
+            
+            return {
+                "answer": answer,
+                "followup_questions": followup_questions,
+                "context_chunks_used": len(context_chunks),
+                "total_chunks_found": len(context_chunks)
+            }
+            
+        except Exception as e:
+            logger.error(f"Answer with followup generation failed: {e}")
+            return {
+                "answer": "Entschuldigung, ich konnte keine Antwort generieren.",
+                "followup_questions": "Könntest du deine Frage etwas spezifischer stellen?",
+                "context_chunks_used": 0,
+                "total_chunks_found": len(context_chunks)
+            }
+    
+    def _build_context_for_clarification(self, chunks: List[Dict[str, Any]]) -> str:
+        """Baut Kontext für die Nachfrage-Generierung"""
+        
+        if not chunks:
+            return "Kein spezifischer Kontext verfügbar."
+        
+        # Nehme die ersten 5 relevanten Chunks
+        context_chunks = chunks[:5]
+        
+        context_parts = []
+        for i, chunk in enumerate(context_chunks, 1):
+            text = chunk.get('chunk_text', '')
+            speaker = chunk.get('speaker', 'Unknown')
+            
+            context_parts.append(f"[{speaker}]: {text}")
+        
+        return "\n\n".join(context_parts)
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp"""
+        from datetime import datetime
+        return datetime.now().isoformat()
+    
+    def get_clarification_history(self) -> List[Dict[str, Any]]:
+        """Gibt die Nachfrage-Historie zurück"""
+        return self.clarification_history
 
 
 class MiniChatAgent:
@@ -24,17 +255,22 @@ class MiniChatAgent:
         self.video_processor = VideoProcessor()
         self.conversation_history = []
         
-        logger.info("Initialized MiniChatAgent")
+        # Initialize clarification mode
+        self.clarification_mode = ClarificationMode(self.openai_client, self.video_processor)
+        self.clarification_mode_enabled = True  # Automatisch aktiviert
+        
+        logger.info("Initialized MiniChatAgent with ClarificationMode")
     
     def ask_question(self, question: str, video_id: Optional[str] = None, 
                     context_limit: int = 20, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         """
-        Ask a question about video content
+        Ask a question about video content with clarification mode
         
         Args:
             question: User's question
             video_id: Optional video ID to limit search
             context_limit: Number of relevant chunks to include
+            system_prompt: Optional custom system prompt
             
         Returns:
             Response with answer and sources
@@ -42,11 +278,61 @@ class MiniChatAgent:
         logger.info(f"Processing question: '{question}'")
         
         try:
-            # Search for relevant chunks
+            # Search for relevant chunks first
             relevant_chunks = self.video_processor.search_video_content(
                 question, video_id
             )
             
+            # Check if clarification mode is enabled and question is too vague
+            if (self.clarification_mode_enabled and 
+                self.clarification_mode.is_question_too_vague(question)):
+                
+                logger.info("Question detected as vague, generating clarification questions")
+                
+                # Generate clarification questions
+                clarification = self.clarification_mode.generate_clarification_questions(
+                    question, relevant_chunks
+                )
+                
+                # Calculate confidence based on found chunks
+                confidence = self._calculate_confidence(relevant_chunks[:5], question)
+                
+                return {
+                    "answer": f"🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
+                    "sources": self._format_sources(relevant_chunks[:5]),
+                    "confidence": confidence,
+                    "context_chunks_used": 5,  # Use first 5 chunks for clarification
+                    "total_chunks_found": len(relevant_chunks),
+                    "clarification_mode": True,
+                    "clarification_questions": clarification
+                }
+            
+            # Check if question is specific enough for answer + followup questions
+            elif (self.clarification_mode_enabled and 
+                  self.clarification_mode.is_question_specific_enough(question) and
+                  relevant_chunks):
+                
+                logger.info("Question is specific enough, generating answer with followup questions")
+                
+                # Generate answer with followup questions
+                result = self.clarification_mode.generate_answer_with_followup_questions(
+                    question, relevant_chunks, system_prompt
+                )
+                
+                # Calculate confidence
+                confidence = self._calculate_confidence(relevant_chunks[:20], question)
+                
+                return {
+                    "answer": f"{result['answer']}\n\n🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
+                    "sources": self._format_sources(relevant_chunks[:20]),
+                    "confidence": confidence,
+                    "context_chunks_used": result['context_chunks_used'],
+                    "total_chunks_found": result['total_chunks_found'],
+                    "clarification_mode": True,
+                    "followup_questions": result['followup_questions']
+                }
+            
+            # If question is specific enough or clarification mode is disabled, proceed normally
             if not relevant_chunks:
                 return {
                     "answer": "Entschuldigung, ich konnte keine relevanten Informationen zu Ihrer Frage finden.",
@@ -74,7 +360,8 @@ class MiniChatAgent:
                 "sources": self._format_sources(context_chunks),
                 "confidence": confidence,
                 "context_chunks_used": len(context_chunks),
-                "total_chunks_found": len(relevant_chunks)
+                "total_chunks_found": len(relevant_chunks),
+                "clarification_mode": False
             }
             
             # Add to conversation history
@@ -201,6 +488,24 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         """Clear conversation history"""
         self.conversation_history = []
         logger.info("Conversation history cleared")
+    
+    def toggle_clarification_mode(self, enabled: bool = None) -> bool:
+        """Toggle clarification mode on/off"""
+        if enabled is None:
+            self.clarification_mode_enabled = not self.clarification_mode_enabled
+        else:
+            self.clarification_mode_enabled = enabled
+        
+        logger.info(f"Clarification mode {'enabled' if self.clarification_mode_enabled else 'disabled'}")
+        return self.clarification_mode_enabled
+    
+    def get_clarification_history(self) -> List[Dict[str, Any]]:
+        """Get clarification history"""
+        return self.clarification_mode.get_clarification_history()
+    
+    def is_clarification_mode_enabled(self) -> bool:
+        """Check if clarification mode is enabled"""
+        return self.clarification_mode_enabled
 
 
 class InteractiveChatSession:
