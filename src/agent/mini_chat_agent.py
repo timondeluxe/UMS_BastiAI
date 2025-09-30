@@ -3,6 +3,7 @@ Mini Chat Agent for video content retrieval and Q&A
 """
 
 import logging
+import random
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
@@ -160,7 +161,7 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
+Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Verwende verschiedene Einleitungen und einen direkten, motivierenden Ton wie "BOOM, lasst es uns direkt angehen!" oder ähnliche Variationen. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
         else:
             answer_prompt = f"""Du bist ein hilfreicher Assistent, der Fragen zu Video-Inhalten beantwortet.
 
@@ -169,7 +170,7 @@ Kontext aus dem Video:
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Verwende deutsche Sprache und sei präzise. Berücksichtige die vorherige Unterhaltung für einen natürlichen Gesprächsfluss."""
+Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Verwende deutsche Sprache und sei präzise. Verwende verschiedene motivierende Einleitungen wie "BOOM, lasst es uns direkt angehen!", "Perfekt, hier ist mein direkter Ansatz:", "Alles klar, lass uns das sofort anpacken:" oder ähnliche Variationen. Berücksichtige die vorherige Unterhaltung für einen natürlichen Gesprächsfluss."""
 
         try:
             # Generiere Antwort
@@ -180,7 +181,7 @@ Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistori
                     {"role": "user", "content": answer_prompt}
                 ],
                 max_tokens=400,
-                temperature=0.1
+                temperature=0.7  # Höhere Temperature für mehr Variationen
             )
             
             answer = response.choices[0].message.content.strip()
@@ -205,7 +206,7 @@ Beispiele:
 - Bei Gewichtsabnahme: "Wie ist dein Schlafrhythmus? Trinkst du genug Wasser? Hast du Stress?"
 - Bei Lead-Generierung: "Wie ist deine aktuelle Website? Nutzt du Social Media? Hast du ein Budget?"
 
-Stelle die Nachfragen in einem freundlichen, aber direkten Ton. Verwende "du" und sei konkret.
+Stelle die Nachfragen in einem freundlichen, aber direkten Ton. Verwende "du" und sei konkret. Verwende verschiedene Formulierungen und Emojis für Abwechslung.
 Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
 
             followup_response = self.openai_client.chat.completions.create(
@@ -215,7 +216,7 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
                     {"role": "user", "content": followup_prompt}
                 ],
                 max_tokens=200,
-                temperature=0.3
+                temperature=0.8  # Höhere Temperature für mehr Variationen in Nachfragen
             )
             
             followup_questions = followup_response.choices[0].message.content.strip()
@@ -259,6 +260,48 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
         """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
+    
+    def _get_random_answer_intro(self) -> str:
+        """Gibt eine zufällige Einleitung für Antworten zurück"""
+        intros = [
+            "BOOM, lasst es uns direkt angehen!",
+            "Perfekt, hier ist mein direkter Ansatz:",
+            "Alles klar, lass uns das sofort anpacken:",
+            "Genau das brauchst du - hier ist mein Plan:",
+            "Super Frage! Lass mich dir das direkt erklären:",
+            "Okay, hier ist mein ehrlicher Ansatz:",
+            "Das ist ein wichtiges Thema - lass uns das richtig angehen:",
+            "Verstehe! Hier ist mein direkter Ratschlag:",
+            "Gute Frage! Lass mich dir das sofort zeigen:",
+            "Hier ist mein ehrlicher Take dazu:",
+            "Das ist genau das, was du brauchst:",
+            "Lass uns das direkt und ehrlich angehen:",
+            "Hier ist mein direkter Ansatz für dich:",
+            "Perfekt! Lass mich dir das sofort erklären:",
+            "Das ist ein wichtiger Punkt - hier ist mein Plan:"
+        ]
+        return random.choice(intros)
+    
+    def _get_random_followup_intro(self) -> str:
+        """Gibt eine zufällige Einleitung für Nachfragen zurück"""
+        intros = [
+            "🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:",
+            "💡 Lass mich noch ein paar wichtige Details wissen:",
+            "🎯 Um dir gezielter helfen zu können, brauche ich noch:",
+            "⚡ Für eine noch bessere Antwort, erzähl mir noch:",
+            "🔥 Um das richtig zu lösen, brauche ich noch:",
+            "💪 Für den perfekten Plan, sag mir noch:",
+            "🚀 Um dir optimal zu helfen, erzähl mir:",
+            "✨ Für eine maßgeschneiderte Lösung, brauche ich:",
+            "🎪 Um das richtig anzugehen, sag mir noch:",
+            "💎 Für die beste Strategie, erzähl mir:",
+            "🔥 Um das richtig zu rocken, brauche ich noch:",
+            "⚡ Für den perfekten Durchbruch, sag mir:",
+            "🎯 Um dir gezielt zu helfen, erzähl mir noch:",
+            "💪 Für den besten Ansatz, brauche ich:",
+            "🚀 Um das richtig zu lösen, sag mir noch:"
+        ]
+        return random.choice(intros)
     
     def get_clarification_history(self) -> List[Dict[str, Any]]:
         """Gibt die Nachfrage-Historie zurück"""
@@ -317,8 +360,21 @@ class MiniChatAgent:
                     # Calculate confidence based on found chunks
                     confidence = self._calculate_confidence(relevant_chunks[:10], question)
                     
+                    # Zufällige Einleitung für Nachfragen
+                    intro_variations = [
+                        "🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:",
+                        "💡 Lass mich das besser verstehen. Für eine gezielte Antwort brauche ich noch:",
+                        "🎯 Um dir optimal helfen zu können, erzähl mir noch:",
+                        "⚡ Für die beste Lösung brauche ich noch ein paar Details:",
+                        "🔥 Um das richtig anzugehen, sag mir noch:",
+                        "💪 Für den perfekten Plan brauche ich:",
+                        "🚀 Um dir gezielt zu helfen, erzähl mir:",
+                        "✨ Für eine maßgeschneiderte Antwort, sag mir:"
+                    ]
+                    intro = random.choice(intro_variations)
+                    
                     return {
-                        "answer": f"🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
+                        "answer": f"{intro}\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
                         "sources": self._format_sources(relevant_chunks[:10]),
                         "confidence": confidence,
                         "context_chunks_used": 10,
@@ -346,8 +402,11 @@ class MiniChatAgent:
                         "timestamp": self._get_timestamp()
                     })
                     
+                    # Zufällige Einleitung für Nachfragen
+                    followup_intro = self.clarification_mode._get_random_followup_intro()
+                    
                     return {
-                        "answer": f"{result['answer']}\n\n🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
+                        "answer": f"{result['answer']}\n\n{followup_intro}\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
                         "sources": self._format_sources(relevant_chunks[:30]),
                         "confidence": confidence,
                         "context_chunks_used": result['context_chunks_used'],
