@@ -885,7 +885,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.1.0 - Enhanced Nachfrage-Modus
+        Version 2.1.4 - Response Variations & Bug Fixes
     </div>
     """, unsafe_allow_html=True)
 
