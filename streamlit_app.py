@@ -476,6 +476,49 @@ def test_connections():
     
     return test_results
 
+def display_debug_info():
+    """Display debug information about environment variables"""
+    st.markdown("### 🔧 Debug Information")
+    
+    # Get environment variables
+    openai_key = os.getenv('OPENAI_API_KEY', 'Not set')
+    supabase_url = os.getenv('SUPABASE_URL', 'Not set')
+    supabase_publishable = os.getenv('SUPABASE_PUBLISHABLE_KEY', 'Not set')
+    supabase_secret = os.getenv('SUPABASE_SECRET_KEY', 'Not set')
+    
+    # Mask sensitive information
+    def mask_key(key, show_chars=8):
+        if key == 'Not set':
+            return key
+        if len(key) <= show_chars:
+            return '*' * len(key)
+        return key[:show_chars] + '*' * (len(key) - show_chars)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.info(f"**OpenAI API Key:** {mask_key(openai_key)}")
+        st.info(f"**Supabase URL:** {supabase_url[:50] + '...' if len(supabase_url) > 50 else supabase_url}")
+    
+    with col2:
+        st.info(f"**Supabase Publishable:** {mask_key(supabase_publishable)}")
+        st.info(f"**Supabase Secret:** {mask_key(supabase_secret)}")
+    
+    # Check if all required keys are set
+    all_set = all([
+        openai_key != 'Not set',
+        supabase_url != 'Not set',
+        supabase_publishable != 'Not set',
+        supabase_secret != 'Not set'
+    ])
+    
+    if all_set:
+        st.success("✅ All environment variables are set")
+    else:
+        st.error("❌ Some environment variables are missing")
+    
+    st.divider()
+
 def main():
     """Main Streamlit application"""
     
@@ -488,6 +531,9 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">🤖 BastiAI</h1>', unsafe_allow_html=True)
+    
+    # Display debug information at the top
+    display_debug_info()
     
     # Sidebar for settings
     with st.sidebar:
