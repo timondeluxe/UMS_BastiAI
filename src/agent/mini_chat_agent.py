@@ -302,54 +302,59 @@ class MiniChatAgent:
                 question, video_id
             )
             
-            # Check if clarification mode is enabled and question is too vague
-            if (self.clarification_mode_enabled and 
-                self.clarification_mode.is_question_too_vague(question)):
+            # Check if clarification mode is enabled
+            if self.clarification_mode_enabled and relevant_chunks:
                 
-                logger.info("Question detected as vague, generating clarification questions")
+                # Check if this is a very vague question (first time asking)
+                if self.clarification_mode.is_question_too_vague(question):
+                    logger.info("Question detected as very vague, generating initial clarification questions")
+                    
+                    # Generate initial clarification questions
+                    clarification = self.clarification_mode.generate_clarification_questions(
+                        question, relevant_chunks
+                    )
+                    
+                    # Calculate confidence based on found chunks
+                    confidence = self._calculate_confidence(relevant_chunks[:10], question)
+                    
+                    return {
+                        "answer": f"🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
+                        "sources": self._format_sources(relevant_chunks[:10]),
+                        "confidence": confidence,
+                        "context_chunks_used": 10,
+                        "total_chunks_found": len(relevant_chunks),
+                        "clarification_mode": True,
+                        "clarification_questions": clarification
+                    }
                 
-                # Generate clarification questions
-                clarification = self.clarification_mode.generate_clarification_questions(
-                    question, relevant_chunks
-                )
-                
-                # Calculate confidence based on found chunks
-                confidence = self._calculate_confidence(relevant_chunks[:10], question)
-                
-                return {
-                    "answer": f"🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
-                    "sources": self._format_sources(relevant_chunks[:10]),  # Use more chunks for clarification
-                    "confidence": confidence,
-                    "context_chunks_used": 10,  # Use first 10 chunks for clarification
-                    "total_chunks_found": len(relevant_chunks),
-                    "clarification_mode": True,
-                    "clarification_questions": clarification
-                }
-            
-            # Check if question is specific enough for answer + followup questions
-            elif (self.clarification_mode_enabled and 
-                  self.clarification_mode.is_question_specific_enough(question) and
-                  relevant_chunks):
-                
-                logger.info("Question is specific enough, generating answer with followup questions")
-                
-                # Generate answer with followup questions
-                result = self.clarification_mode.generate_answer_with_followup_questions(
-                    question, relevant_chunks, system_prompt, self.conversation_history
-                )
-                
-                # Calculate confidence using more chunks
-                confidence = self._calculate_confidence(relevant_chunks[:30], question)
-                
-                return {
-                    "answer": f"{result['answer']}\n\n🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
-                    "sources": self._format_sources(relevant_chunks[:30]),
-                    "confidence": confidence,
-                    "context_chunks_used": result['context_chunks_used'],
-                    "total_chunks_found": result['total_chunks_found'],
-                    "clarification_mode": True,
-                    "followup_questions": result['followup_questions']
-                }
+                # For all other questions in clarification mode, provide answer + followup questions
+                else:
+                    logger.info("Generating answer with followup questions for clarification mode")
+                    
+                    # Generate answer with followup questions
+                    result = self.clarification_mode.generate_answer_with_followup_questions(
+                        question, relevant_chunks, system_prompt, self.conversation_history
+                    )
+                    
+                    # Calculate confidence using more chunks
+                    confidence = self._calculate_confidence(relevant_chunks[:30], question)
+                    
+                    # Add to conversation history
+                    self.conversation_history.append({
+                        "question": question,
+                        "answer": result['answer'],
+                        "timestamp": self._get_timestamp()
+                    })
+                    
+                    return {
+                        "answer": f"{result['answer']}\n\n🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
+                        "sources": self._format_sources(relevant_chunks[:30]),
+                        "confidence": confidence,
+                        "context_chunks_used": result['context_chunks_used'],
+                        "total_chunks_found": result['total_chunks_found'],
+                        "clarification_mode": True,
+                        "followup_questions": result['followup_questions']
+                    }
             
             # If question is specific enough or clarification mode is disabled, proceed normally
             if not relevant_chunks:
