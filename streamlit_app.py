@@ -512,6 +512,25 @@ def display_debug_info():
         supabase_secret != 'Not set'
     ])
     
+    # Show detailed debugging
+    st.markdown("**🔍 Detailed Debug Info:**")
+    st.write(f"OpenAI Key Length: {len(openai_key) if openai_key != 'Not set' else 0}")
+    st.write(f"OpenAI Key Type: {type(openai_key)}")
+    st.write(f"OpenAI Key First 5 chars: {openai_key[:5] if openai_key != 'Not set' else 'N/A'}")
+    st.write(f"Supabase URL Length: {len(supabase_url) if supabase_url != 'Not set' else 0}")
+    st.write(f"Supabase Publishable Length: {len(supabase_publishable) if supabase_publishable != 'Not set' else 0}")
+    st.write(f"Supabase Secret Length: {len(supabase_secret) if supabase_secret != 'Not set' else 0}")
+    
+    # Show all environment variables that start with OPENAI or SUPABASE
+    st.markdown("**🌍 All Environment Variables:**")
+    env_vars = {k: v for k, v in os.environ.items() if k.startswith(('OPENAI', 'SUPABASE'))}
+    for key, value in env_vars.items():
+        if 'KEY' in key or 'SECRET' in key:
+            masked_value = f"{value[:10]}...{value[-10:]}" if len(value) > 20 else "***"
+            st.write(f"{key}: {masked_value}")
+        else:
+            st.write(f"{key}: {value}")
+    
     if all_set:
         st.success("✅ All environment variables are set")
     else:
