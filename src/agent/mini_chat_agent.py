@@ -134,29 +134,42 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
             logger.error(f"Clarification generation failed: {e}")
             return "Könntest du deine Frage etwas spezifischer stellen? Was genau möchtest du wissen?"
     
-    def generate_answer_with_followup_questions(self, question: str, context_chunks: List[Dict[str, Any]], system_prompt: Optional[str] = None) -> Dict[str, Any]:
+    def generate_answer_with_followup_questions(self, question: str, context_chunks: List[Dict[str, Any]], system_prompt: Optional[str] = None, conversation_history: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Generiert eine Antwort UND weitere Nachfragen für noch bessere Hilfe"""
         
+        # Use more chunks for comprehensive answers (up to 30)
+        max_chunks = min(30, len(context_chunks))
+        selected_chunks = context_chunks[:max_chunks]
+        
         # Baue Kontext für die Antwort
-        context_text = self._build_context_for_clarification(context_chunks)
+        context_text = self._build_context_for_clarification(selected_chunks)
+        
+        # Build conversation history context
+        history_context = ""
+        if conversation_history and len(conversation_history) > 0:
+            history_parts = []
+            for entry in conversation_history[-5:]:  # Last 5 conversations
+                history_parts.append(f"Frage: {entry.get('question', '')}")
+                history_parts.append(f"Antwort: {entry.get('answer', '')}")
+            history_context = "\n\nVorherige Unterhaltung:\n" + "\n\n".join(history_parts)
         
         # Generiere Antwort mit dem bereitgestellten System-Prompt
         if system_prompt:
             answer_prompt = f"""Kontext aus dem Video:
-{context_text}
+{context_text}{history_context}
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
+Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
         else:
             answer_prompt = f"""Du bist ein hilfreicher Assistent, der Fragen zu Video-Inhalten beantwortet.
 
 Kontext aus dem Video:
-{context_text}
+{context_text}{history_context}
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich. Verwende deutsche Sprache und sei präzise."""
+Antworte basierend auf dem bereitgestellten Kontext und der Unterhaltungshistorie. Gib eine umfassende, detaillierte Antwort. Verwende deutsche Sprache und sei präzise. Berücksichtige die vorherige Unterhaltung für einen natürlichen Gesprächsfluss."""
 
         try:
             # Generiere Antwort
@@ -179,9 +192,14 @@ Ursprüngliche Frage: "{question}"
 Deine Antwort: "{answer}"
 
 Verfügbarer Kontext aus den Videos:
-{context_text}
+{context_text}{history_context}
 
-Deine Aufgabe: Stelle 2-3 zusätzliche Nachfragen, die dem Fragesteller helfen, sein Problem noch besser zu lösen. Diese sollten tiefer gehen als die ursprüngliche Frage.
+Deine Aufgabe: Stelle 2-3 zusätzliche Nachfragen, die dem Fragesteller helfen, sein Problem noch besser zu lösen. Diese sollten tiefer gehen als die ursprüngliche Frage und die Unterhaltung natürlich fortsetzen.
+
+Berücksichtige die vorherige Unterhaltung, um:
+- Nicht bereits besprochene Themen zu vermeiden
+- Auf vorherige Antworten aufzubauen
+- Die Unterhaltung logisch fortzusetzen
 
 Beispiele:
 - Bei Gewichtsabnahme: "Wie ist dein Schlafrhythmus? Trinkst du genug Wasser? Hast du Stress?"
@@ -205,7 +223,7 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
             return {
                 "answer": answer,
                 "followup_questions": followup_questions,
-                "context_chunks_used": len(context_chunks),
+                "context_chunks_used": len(selected_chunks),
                 "total_chunks_found": len(context_chunks)
             }
             
@@ -224,8 +242,9 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
         if not chunks:
             return "Kein spezifischer Kontext verfügbar."
         
-        # Nehme die ersten 5 relevanten Chunks
-        context_chunks = chunks[:5]
+        # Use more chunks for better context (up to 15 for clarification)
+        max_chunks = min(15, len(chunks))
+        context_chunks = chunks[:max_chunks]
         
         context_parts = []
         for i, chunk in enumerate(context_chunks, 1):
@@ -295,13 +314,13 @@ class MiniChatAgent:
                 )
                 
                 # Calculate confidence based on found chunks
-                confidence = self._calculate_confidence(relevant_chunks[:5], question)
+                confidence = self._calculate_confidence(relevant_chunks[:10], question)
                 
                 return {
                     "answer": f"🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
-                    "sources": self._format_sources(relevant_chunks[:5]),
+                    "sources": self._format_sources(relevant_chunks[:10]),  # Use more chunks for clarification
                     "confidence": confidence,
-                    "context_chunks_used": 5,  # Use first 5 chunks for clarification
+                    "context_chunks_used": 10,  # Use first 10 chunks for clarification
                     "total_chunks_found": len(relevant_chunks),
                     "clarification_mode": True,
                     "clarification_questions": clarification
@@ -316,15 +335,15 @@ class MiniChatAgent:
                 
                 # Generate answer with followup questions
                 result = self.clarification_mode.generate_answer_with_followup_questions(
-                    question, relevant_chunks, system_prompt
+                    question, relevant_chunks, system_prompt, self.conversation_history
                 )
                 
-                # Calculate confidence
-                confidence = self._calculate_confidence(relevant_chunks[:20], question)
+                # Calculate confidence using more chunks
+                confidence = self._calculate_confidence(relevant_chunks[:30], question)
                 
                 return {
                     "answer": f"{result['answer']}\n\n🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
-                    "sources": self._format_sources(relevant_chunks[:20]),
+                    "sources": self._format_sources(relevant_chunks[:30]),
                     "confidence": confidence,
                     "context_chunks_used": result['context_chunks_used'],
                     "total_chunks_found": result['total_chunks_found'],
