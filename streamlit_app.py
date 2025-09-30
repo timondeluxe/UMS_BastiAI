@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 from datetime import datetime
 import time
+import os
 
 # Add project root to Python path
 project_root = Path(__file__).parent
@@ -418,6 +419,55 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         st.error(f"Fehler beim Verarbeiten der Frage: {e}")
         return None
 
+def test_connections():
+    """Test database and API connections."""
+    test_results = {
+        'openai': False,
+        'supabase': False,
+        'database_query': False,
+        'chunks_found': 0,
+        'error_messages': []
+    }
+    
+    try:
+        # Test OpenAI connection
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # Simple test request
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "Test"}],
+            max_tokens=5
+        )
+        test_results['openai'] = True
+    except Exception as e:
+        test_results['error_messages'].append(f"OpenAI Error: {str(e)}")
+    
+    try:
+        # Test Supabase connection
+        from supabase import create_client, Client
+        url = os.getenv('SUPABASE_URL')
+        key = os.getenv('SUPABASE_SECRET_KEY')
+        
+        if url and key:
+            supabase: Client = create_client(url, key)
+            
+            # Test database query
+            result = supabase.table('video_chunks').select('*').limit(1).execute()
+            test_results['supabase'] = True
+            test_results['database_query'] = True
+            
+            # Count total chunks
+            count_result = supabase.table('video_chunks').select('id', count='exact').execute()
+            test_results['chunks_found'] = count_result.count if count_result.count else 0
+        else:
+            test_results['error_messages'].append("Supabase credentials not found")
+    except Exception as e:
+        test_results['error_messages'].append(f"Supabase Error: {str(e)}")
+    
+    return test_results
+
 def main():
     """Main Streamlit application"""
     
@@ -462,6 +512,48 @@ def main():
         # Update agent clarification mode if agent exists
         if st.session_state.agent:
             st.session_state.agent.toggle_clarification_mode(clarification_mode)
+        
+        # Test mode toggle
+        test_mode = st.checkbox(
+            "🔧 Test-Modus aktivieren", 
+            value=st.session_state.get('test_mode', False),
+            help="Testet die Verbindungen zu OpenAI und Supabase"
+        )
+        st.session_state.test_mode = test_mode
+        
+        # Run connection tests if test mode is enabled
+        if test_mode:
+            st.subheader("🔧 Verbindungstest")
+            with st.spinner("Teste Verbindungen..."):
+                test_results = test_connections()
+            
+            # Display test results
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if test_results['openai']:
+                    st.success("✅ OpenAI")
+                else:
+                    st.error("❌ OpenAI")
+                
+                if test_results['supabase']:
+                    st.success("✅ Supabase")
+                else:
+                    st.error("❌ Supabase")
+            
+            with col2:
+                if test_results['database_query']:
+                    st.success("✅ Datenbank")
+                else:
+                    st.error("❌ Datenbank")
+                
+                st.info(f"📊 Chunks: {test_results['chunks_found']}")
+            
+            # Show error messages if any
+            if test_results['error_messages']:
+                st.error("Fehler:")
+                for error in test_results['error_messages']:
+                    st.error(f"• {error}")
         
         # Check URL parameters for debug mode
         query_params = st.query_params
