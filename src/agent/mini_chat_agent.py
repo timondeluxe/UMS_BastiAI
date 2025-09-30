@@ -348,9 +348,10 @@ class MiniChatAgent:
             # Check if clarification mode is enabled
             if self.clarification_mode_enabled and relevant_chunks:
                 
-                # Check if this is a very vague question (first time asking)
-                if self.clarification_mode.is_question_too_vague(question):
-                    logger.info("Question detected as very vague, generating initial clarification questions")
+                # Check if this is a very vague question (first time asking) AND no conversation history
+                if (self.clarification_mode.is_question_too_vague(question) and 
+                    len(self.conversation_history) == 0):
+                    logger.info("Question detected as very vague with no history, generating initial clarification questions")
                     
                     # Generate initial clarification questions
                     clarification = self.clarification_mode.generate_clarification_questions(
@@ -383,7 +384,7 @@ class MiniChatAgent:
                         "clarification_questions": clarification
                     }
                 
-                # For all other questions in clarification mode, provide answer + followup questions
+                # For all other questions in clarification mode (including follow-up answers), provide answer + followup questions
                 else:
                     logger.info("Generating answer with followup questions for clarification mode")
                     
