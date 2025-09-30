@@ -3,6 +3,7 @@ Configuration settings for the Umsetzer Chunking Pipeline
 """
 
 import os
+import streamlit as st
 from typing import Dict, Any, Optional
 
 # Handle different pydantic versions
@@ -158,5 +159,36 @@ class Settings(BaseSettings):
         env_prefix = ""
 
 
+def get_secret_or_env(key: str, default: str = None) -> str:
+    """Get value from st.secrets first, then os.environ as fallback"""
+    try:
+        # Try st.secrets first
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except:
+        pass
+    
+    # Fallback to environment variable
+    return os.environ.get(key, default)
+
+# Global settings instance with custom secret loading
+class StreamlitSettings(Settings):
+    """Settings class that uses st.secrets as primary source"""
+    
+    def __init__(self, **kwargs):
+        # Override the openai_api_key to use st.secrets
+        if 'openai_api_key' not in kwargs:
+            kwargs['openai_api_key'] = get_secret_or_env('OPENAI_API_KEY')
+        
+        # Override Supabase settings to use st.secrets
+        if 'supabase_url' not in kwargs:
+            kwargs['supabase_url'] = get_secret_or_env('SUPABASE_URL')
+        if 'supabase_publishable_key' not in kwargs:
+            kwargs['supabase_publishable_key'] = get_secret_or_env('SUPABASE_PUBLISHABLE_KEY')
+        if 'supabase_secret_key' not in kwargs:
+            kwargs['supabase_secret_key'] = get_secret_or_env('SUPABASE_SECRET_KEY')
+        
+        super().__init__(**kwargs)
+
 # Global settings instance
-settings = Settings()
+settings = StreamlitSettings()

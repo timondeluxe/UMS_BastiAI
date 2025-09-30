@@ -480,11 +480,11 @@ def display_debug_info():
     """Display debug information about environment variables"""
     st.markdown("### 🔧 Debug Information")
     
-    # Get environment variables
-    openai_key = os.getenv('OPENAI_API_KEY', 'Not set')
-    supabase_url = os.getenv('SUPABASE_URL', 'Not set')
-    supabase_publishable = os.getenv('SUPABASE_PUBLISHABLE_KEY', 'Not set')
-    supabase_secret = os.getenv('SUPABASE_SECRET_KEY', 'Not set')
+    # Get environment variables - use st.secrets first, then os.environ as fallback
+    openai_key = st.secrets.get("OPENAI_API_KEY", os.environ.get('OPENAI_API_KEY', 'Not set'))
+    supabase_url = st.secrets.get("SUPABASE_URL", os.environ.get('SUPABASE_URL', 'Not set'))
+    supabase_publishable = st.secrets.get("SUPABASE_PUBLISHABLE_KEY", os.environ.get('SUPABASE_PUBLISHABLE_KEY', 'Not set'))
+    supabase_secret = st.secrets.get("SUPABASE_SECRET_KEY", os.environ.get('SUPABASE_SECRET_KEY', 'Not set'))
     
     # Mask sensitive information - show first 10 and last 10 characters
     def mask_key(key, show_chars=10):
