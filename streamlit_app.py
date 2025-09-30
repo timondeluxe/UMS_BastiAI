@@ -476,67 +476,6 @@ def test_connections():
     
     return test_results
 
-def display_debug_info():
-    """Display debug information about environment variables"""
-    st.markdown("### 🔧 Debug Information")
-    
-    # Get environment variables - use st.secrets first, then os.environ as fallback
-    openai_key = st.secrets.get("OPENAI_API_KEY", os.environ.get('OPENAI_API_KEY', 'Not set'))
-    supabase_url = st.secrets.get("SUPABASE_URL", os.environ.get('SUPABASE_URL', 'Not set'))
-    supabase_publishable = st.secrets.get("SUPABASE_PUBLISHABLE_KEY", os.environ.get('SUPABASE_PUBLISHABLE_KEY', 'Not set'))
-    supabase_secret = st.secrets.get("SUPABASE_SECRET_KEY", os.environ.get('SUPABASE_SECRET_KEY', 'Not set'))
-    
-    # Mask sensitive information - show first 10 and last 10 characters
-    def mask_key(key, show_chars=10):
-        if key == 'Not set':
-            return 'Not set'
-        if len(key) <= show_chars * 2:
-            return f"{key[:show_chars]}...{key[-show_chars:]}" if len(key) > show_chars else key
-        return f"{key[:show_chars]}...{key[-show_chars:]}"
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.info(f"**OpenAI API Key:** {mask_key(openai_key)}")
-        st.info(f"**Supabase URL:** {supabase_url[:50] + '...' if len(supabase_url) > 50 else supabase_url}")
-    
-    with col2:
-        st.info(f"**Supabase Publishable:** {mask_key(supabase_publishable)}")
-        st.info(f"**Supabase Secret:** {mask_key(supabase_secret)}")
-    
-    # Check if all required keys are set
-    all_set = all([
-        openai_key != 'Not set',
-        supabase_url != 'Not set',
-        supabase_publishable != 'Not set',
-        supabase_secret != 'Not set'
-    ])
-    
-    # Show detailed debugging
-    st.markdown("**🔍 Detailed Debug Info:**")
-    st.write(f"OpenAI Key Length: {len(openai_key) if openai_key != 'Not set' else 0}")
-    st.write(f"OpenAI Key Type: {type(openai_key)}")
-    st.write(f"OpenAI Key First 5 chars: {openai_key[:5] if openai_key != 'Not set' else 'N/A'}")
-    st.write(f"Supabase URL Length: {len(supabase_url) if supabase_url != 'Not set' else 0}")
-    st.write(f"Supabase Publishable Length: {len(supabase_publishable) if supabase_publishable != 'Not set' else 0}")
-    st.write(f"Supabase Secret Length: {len(supabase_secret) if supabase_secret != 'Not set' else 0}")
-    
-    # Show all environment variables that start with OPENAI or SUPABASE
-    st.markdown("**🌍 All Environment Variables:**")
-    env_vars = {k: v for k, v in os.environ.items() if k.startswith(('OPENAI', 'SUPABASE'))}
-    for key, value in env_vars.items():
-        if 'KEY' in key or 'SECRET' in key:
-            masked_value = f"{value[:10]}...{value[-10:]}" if len(value) > 20 else "***"
-            st.write(f"{key}: {masked_value}")
-        else:
-            st.write(f"{key}: {value}")
-    
-    if all_set:
-        st.success("✅ All environment variables are set")
-    else:
-        st.error("❌ Some environment variables are missing")
-    
-    st.divider()
 
 def main():
     """Main Streamlit application"""
@@ -550,9 +489,6 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">🤖 BastiAI</h1>', unsafe_allow_html=True)
-    
-    # Display debug information at the top
-    display_debug_info()
     
     # Sidebar for settings
     with st.sidebar:
