@@ -486,13 +486,13 @@ def display_debug_info():
     supabase_publishable = os.getenv('SUPABASE_PUBLISHABLE_KEY', 'Not set')
     supabase_secret = os.getenv('SUPABASE_SECRET_KEY', 'Not set')
     
-    # Mask sensitive information
-    def mask_key(key, show_chars=8):
+    # Mask sensitive information - show first 10 and last 10 characters
+    def mask_key(key, show_chars=10):
         if key == 'Not set':
-            return key
-        if len(key) <= show_chars:
-            return '*' * len(key)
-        return key[:show_chars] + '*' * (len(key) - show_chars)
+            return 'Not set'
+        if len(key) <= show_chars * 2:
+            return f"{key[:show_chars]}...{key[-show_chars:]}" if len(key) > show_chars else key
+        return f"{key[:show_chars]}...{key[-show_chars:]}"
     
     col1, col2 = st.columns(2)
     
