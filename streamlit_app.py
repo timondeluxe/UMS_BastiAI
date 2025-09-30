@@ -884,7 +884,8 @@ def main():
     st.divider()
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
-        BastiAI - Powered by OpenAI & Supabase
+        BastiAI - Powered by OpenAI & Supabase<br>
+        Version 2.1.0 - Enhanced Nachfrage-Modus
     </div>
     """, unsafe_allow_html=True)
 
