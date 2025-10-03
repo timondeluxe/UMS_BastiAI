@@ -777,7 +777,7 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                             {"role": "system", "content": system_content},
                             {"role": "user", "content": final_prompt}
                         ],
-                        max_tokens=600,
+                        max_tokens=1200,  # Erhöht für vollständige Antworten inkl. Bonus-Tipps
                         temperature=0.7
                     )
                     

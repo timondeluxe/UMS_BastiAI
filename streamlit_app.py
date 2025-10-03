@@ -980,7 +980,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.3.3 - Bugfix: Nutzerantworten werden korrekt erkannt
+        Version 2.3.4 - Vollständige finale Antworten (max_tokens erhöht)
     </div>
     """, unsafe_allow_html=True)
 
