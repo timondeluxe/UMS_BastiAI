@@ -25,6 +25,7 @@ class ClarificationMode:
         self.video_processor = video_processor
         self.clarification_history = []
         self.iterative_mode = False  # One-question-at-a-time mode
+        self.question_strategy = None  # Planned questions for iterative mode
         
     def is_question_too_vague(self, question: str) -> bool:
         """Erkennt, ob eine Frage zu unspezifisch ist"""
@@ -308,10 +309,178 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
         """Gibt die Nachfrage-Historie zurück"""
         return self.clarification_history
     
+    def create_question_strategy(self, initial_question: str, context_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Erstellt eine Fragen-Strategie am Anfang der iterativen Befragung.
+        Definiert 5-7 wichtige Fragen, die beantwortet werden sollten.
+        
+        Returns:
+            Dict mit 'questions' (List) und Metadaten
+        """
+        # Build context from chunks
+        context_text = self._build_context_for_clarification(context_chunks[:10])
+        
+        strategy_prompt = f"""Du bist ein Experte für strukturierte Befragung. 
+
+Ursprüngliche Frage: "{initial_question}"
+
+Verfügbarer Kontext aus Videos:
+{context_text[:1000]}
+
+Deine Aufgabe: Erstelle eine Fragen-Strategie mit 5-7 wichtigen Fragen, die beantwortet werden sollten, um eine wirklich gute, maßgeschneiderte Antwort geben zu können.
+
+Die Fragen sollten:
+- Konkrete, messbare Details erfragen (Zahlen, Zeiträume, Budget, etc.)
+- Verschiedene Aspekte abdecken (Situation, Ziel, Ressourcen, Herausforderungen, etc.)
+- Aufeinander aufbauen
+- Für den Nutzer leicht zu beantworten sein
+
+Beispiele für gute Fragen-Strategien:
+
+Bei "Ich möchte abnehmen":
+1. Wie viel möchtest du abnehmen? (Ziel)
+2. Wie viel Sport machst du aktuell pro Woche? (Status Quo)
+3. Wie ernährst du dich derzeit? (Status Quo)
+4. Bis wann möchtest du dein Ziel erreichen? (Zeitrahmen)
+5. Was hast du bereits versucht? (Erfahrung)
+6. Welche Hindernisse siehst du? (Herausforderungen)
+
+Bei "Ich brauche mehr Leads":
+1. Für welches Produkt/Service brauchst du Leads? (Kontext)
+2. Wie viele Leads generierst du aktuell pro Monat? (Status Quo)
+3. Was ist dein Budget für Marketing? (Ressourcen)
+4. Welche Kanäle nutzt du bereits? (Status Quo)
+5. Wer ist deine Zielgruppe? (Kontext)
+6. Was ist dein Ziel an Leads pro Monat? (Ziel)
+
+Antworte NUR mit einem JSON-Objekt in folgendem Format:
+{{
+  "questions": [
+    {{"id": 1, "question": "Frage 1", "category": "Ziel/Status/Ressourcen/etc.", "answered": false}},
+    {{"id": 2, "question": "Frage 2", "category": "...", "answered": false}},
+    ...
+  ],
+  "total_questions": 5-7,
+  "minimum_required": 3-4
+}}"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Du bist ein Experte für strukturierte Befragung."},
+                    {"role": "user", "content": strategy_prompt}
+                ],
+                max_tokens=500,
+                temperature=0.4,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            strategy = json.loads(response.choices[0].message.content.strip())
+            logger.info(f"Created question strategy with {len(strategy.get('questions', []))} questions")
+            
+            # Store strategy
+            self.question_strategy = strategy
+            
+            return strategy
+            
+        except Exception as e:
+            logger.error(f"Question strategy creation failed: {e}")
+            # Fallback strategy
+            return {
+                "questions": [
+                    {"id": 1, "question": "Kannst du mir mehr Details zu deiner aktuellen Situation geben?", "category": "Status Quo", "answered": False},
+                    {"id": 2, "question": "Was ist dein konkretes Ziel?", "category": "Ziel", "answered": False},
+                    {"id": 3, "question": "Welche Ressourcen (Zeit, Budget, etc.) hast du verfügbar?", "category": "Ressourcen", "answered": False}
+                ],
+                "total_questions": 3,
+                "minimum_required": 2
+            }
+    
+    def update_question_strategy_progress(self, conversation_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Aktualisiert den Status der Fragen-Strategie basierend auf der Konversationshistorie.
+        Markiert Fragen als beantwortet, wenn die Info in den Antworten vorhanden ist.
+        
+        Returns:
+            Aktualisierte Strategie mit answered-Status
+        """
+        if not self.question_strategy:
+            logger.warning("No question strategy to update")
+            return None
+        
+        # Build conversation text
+        conversation_text = []
+        for entry in conversation_history:
+            conversation_text.append(f"Frage: {entry.get('question', '')}")
+            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+        
+        conversation_context = "\n".join(conversation_text)
+        
+        # Ask GPT to analyze which questions have been answered
+        questions_json = json.dumps(self.question_strategy['questions'], ensure_ascii=False)
+        
+        update_prompt = f"""Du bist ein Experte für Gesprächsanalyse.
+
+Geplante Fragen-Strategie:
+{questions_json}
+
+Bisherige Unterhaltung:
+{conversation_context}
+
+Deine Aufgabe: Analysiere, welche der geplanten Fragen bereits beantwortet wurden (direkt oder indirekt) basierend auf der bisherigen Unterhaltung.
+
+Eine Frage gilt als beantwortet, wenn:
+- Die Information direkt genannt wurde
+- Die Information implizit aus der Antwort hervorgeht
+- Eine ähnliche Frage bereits beantwortet wurde
+
+Antworte mit einem JSON-Objekt, das für jede Frage angibt, ob sie beantwortet wurde:
+{{
+  "questions": [
+    {{"id": 1, "answered": true/false, "answer_found": "Kurze Zusammenfassung der Antwort wenn beantwortet, sonst null"}},
+    {{"id": 2, "answered": true/false, "answer_found": "..."}},
+    ...
+  ]
+}}"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Du bist ein Experte für Gesprächsanalyse."},
+                    {"role": "user", "content": update_prompt}
+                ],
+                max_tokens=400,
+                temperature=0.2,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            update_result = json.loads(response.choices[0].message.content.strip())
+            
+            # Update the strategy
+            for i, question in enumerate(self.question_strategy['questions']):
+                update_info = update_result['questions'][i]
+                question['answered'] = update_info['answered']
+                question['answer_found'] = update_info.get('answer_found')
+            
+            answered_count = sum(1 for q in self.question_strategy['questions'] if q['answered'])
+            logger.info(f"Strategy update: {answered_count}/{len(self.question_strategy['questions'])} questions answered")
+            
+            return self.question_strategy
+            
+        except Exception as e:
+            logger.error(f"Strategy update failed: {e}")
+            return self.question_strategy
+    
     def check_if_ready_for_final_answer(self, conversation_history: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Analysiert die Konversationshistorie und entscheidet, ob genug Spezifität vorhanden ist
         für eine vollständige Antwort, oder ob noch eine Nachfrage nötig ist.
+        
+        Nutzt die Fragen-Strategie wenn vorhanden.
         
         Returns:
             Dict mit 'ready' (bool) und optional 'reason' (str)
@@ -319,6 +488,38 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
         if not conversation_history:
             return {"ready": False, "reason": "no_history"}
         
+        # If we have a question strategy, use it
+        if self.question_strategy:
+            # Update strategy progress
+            self.update_question_strategy_progress(conversation_history)
+            
+            # Count answered questions
+            answered_count = sum(1 for q in self.question_strategy['questions'] if q.get('answered', False))
+            total_questions = len(self.question_strategy['questions'])
+            minimum_required = self.question_strategy.get('minimum_required', max(3, total_questions - 2))
+            
+            logger.info(f"Strategy check: {answered_count}/{total_questions} answered (minimum: {minimum_required})")
+            
+            # Check if minimum requirement is met
+            if answered_count >= minimum_required:
+                return {
+                    "ready": True,
+                    "confidence": answered_count / total_questions,
+                    "reason": f"{answered_count} von {total_questions} Fragen beantwortet",
+                    "answered_questions": answered_count,
+                    "total_questions": total_questions
+                }
+            else:
+                unanswered = [q for q in self.question_strategy['questions'] if not q.get('answered', False)]
+                return {
+                    "ready": False,
+                    "confidence": answered_count / total_questions,
+                    "reason": f"Noch {len(unanswered)} Fragen offen",
+                    "missing_info": f"Noch {len(unanswered)} von {total_questions} Fragen offen",
+                    "unanswered_questions": unanswered
+                }
+        
+        # Fallback: Original logic without strategy
         # Build conversation context
         conversation_text = []
         for entry in conversation_history:
@@ -385,7 +586,26 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
     def generate_single_clarification_question(self, question: str, conversation_history: List[Dict[str, Any]], context_chunks: List[Dict[str, Any]]) -> str:
         """
         Generiert EINE gezielte Nachfrage basierend auf der bisherigen Unterhaltung.
+        Nutzt die Fragen-Strategie wenn vorhanden, um die nächste unbeantwortete Frage zu stellen.
         """
+        # If we have a strategy, pick the next unanswered question
+        if self.question_strategy:
+            # Update strategy progress first
+            self.update_question_strategy_progress(conversation_history)
+            
+            # Find first unanswered question
+            unanswered_questions = [q for q in self.question_strategy['questions'] if not q.get('answered', False)]
+            
+            if unanswered_questions:
+                next_question = unanswered_questions[0]
+                logger.info(f"Using next question from strategy: {next_question['question']}")
+                return next_question['question']
+            else:
+                # All questions answered, but not ready yet - ask for additional info
+                logger.info("All strategy questions answered, asking for additional info")
+                return "Gibt es noch etwas Wichtiges, das ich wissen sollte, um dir optimal zu helfen?"
+        
+        # Fallback: Generate question without strategy
         # Build conversation context
         conversation_text = []
         for entry in conversation_history:
@@ -414,6 +634,7 @@ Die Nachfrage sollte:
 - Nach konkreten, messbaren Details fragen (Zahlen, Zeiträume, Budget, etc.)
 - Kurz und präzise sein
 - Dem Nutzer helfen, sein Problem besser zu formulieren
+- NICHT bereits gestellte Fragen wiederholen
 
 Beispiele für gute Nachfragen:
 - "Wie viel Budget hast du dafür zur Verfügung?"
@@ -483,6 +704,11 @@ class MiniChatAgent:
             # ===== ITERATIVE CLARIFICATION MODE =====
             if self.iterative_clarification_mode and relevant_chunks:
                 logger.info("Iterative clarification mode active")
+                
+                # Create question strategy if this is the first question
+                if not self.clarification_mode.question_strategy and len(self.conversation_history) == 0:
+                    logger.info("Creating question strategy for iterative mode")
+                    self.clarification_mode.create_question_strategy(question, relevant_chunks)
                 
                 # Check if we have enough specificity for a final answer
                 readiness_check = self.clarification_mode.check_if_ready_for_final_answer(
@@ -834,9 +1060,11 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         return self.conversation_history
     
     def clear_history(self):
-        """Clear conversation history"""
+        """Clear conversation history and question strategy"""
         self.conversation_history = []
-        logger.info("Conversation history cleared")
+        if hasattr(self, 'clarification_mode'):
+            self.clarification_mode.question_strategy = None
+        logger.info("Conversation history and question strategy cleared")
     
     def toggle_clarification_mode(self, enabled: bool = None) -> bool:
         """Toggle clarification mode on/off"""

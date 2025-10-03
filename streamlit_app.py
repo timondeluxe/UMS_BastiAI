@@ -241,6 +241,29 @@ def display_chat_history():
                     </div>
                     """, unsafe_allow_html=True)
                     
+                    # Show question strategy if iterative mode is active
+                    if st.session_state.get('iterative_clarification_mode', False) and st.session_state.agent:
+                        if hasattr(st.session_state.agent, 'clarification_mode'):
+                            strategy = st.session_state.agent.clarification_mode.question_strategy
+                            if strategy:
+                                with st.expander("🎯 Fragen-Strategie"):
+                                    answered_count = sum(1 for q in strategy['questions'] if q.get('answered', False))
+                                    total_count = len(strategy['questions'])
+                                    st.write(f"**Fortschritt:** {answered_count}/{total_count} Fragen beantwortet")
+                                    st.progress(answered_count / total_count if total_count > 0 else 0)
+                                    
+                                    st.write("**Geplante Fragen:**")
+                                    for q in strategy['questions']:
+                                        status_icon = "✅" if q.get('answered', False) else "⏳"
+                                        category = q.get('category', 'Allgemein')
+                                        question_text = q.get('question', '')
+                                        
+                                        if q.get('answered', False):
+                                            answer_summary = q.get('answer_found', '')
+                                            st.markdown(f"{status_icon} **{category}:** {question_text}  \n*Antwort: {answer_summary}*")
+                                        else:
+                                            st.markdown(f"{status_icon} **{category}:** {question_text}")
+                    
                     # Show sources if available (without HTML snippets)
                     if 'sources' in debug_info and debug_info['sources']:
                         with st.expander("📚 Quellen anzeigen"):
@@ -957,7 +980,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.3.0 - Iterativer Nachfrage-Flow für maximale Spezifität
+        Version 2.3.1 - Fragen-Strategie verhindert Doppelfragen
     </div>
     """, unsafe_allow_html=True)
 
