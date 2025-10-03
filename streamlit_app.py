@@ -242,16 +242,53 @@ def display_chat_history():
                     # Show sources if available (without HTML snippets)
                     if 'sources' in debug_info and debug_info['sources']:
                         with st.expander("📚 Quellen anzeigen"):
-                            for j, source in enumerate(debug_info['sources'][:3], 1):
+                            # Add selectbox to choose between Top 3 and All chunks
+                            chunk_display_option = st.selectbox(
+                                "Anzahl anzeigen:",
+                                options=["Top 3", "Alle"],
+                                key=f"chunk_display_{i}"
+                            )
+                            
+                            # Get all selected chunks and used indices
+                            all_chunks = debug_info.get('all_selected_chunks', debug_info['sources'])
+                            used_indices = debug_info.get('used_chunk_indices', list(range(len(debug_info['sources']))))
+                            
+                            # Determine which chunks to display
+                            if chunk_display_option == "Top 3":
+                                chunks_to_display = all_chunks[:3]
+                                display_start_idx = 0
+                            else:
+                                chunks_to_display = all_chunks
+                                display_start_idx = 0
+                            
+                            # Display chunks with usage status
+                            for j, source in enumerate(chunks_to_display, 1):
+                                # Determine if this chunk was used
+                                chunk_index = display_start_idx + j - 1
+                                is_used = chunk_index in used_indices
+                                
+                                # Status badge
+                                if is_used:
+                                    status = "✅ Ausgewählt und genutzt"
+                                    status_color = "#d4edda"  # Light green
+                                else:
+                                    status = "⚪ Ausgewählt, nicht genutzt"
+                                    status_color = "#f8f9fa"  # Light gray
+                                
                                 # Clean text from HTML tags
                                 clean_text = source.get('text', '')
                                 if '<' in clean_text and '>' in clean_text:
                                     import re
                                     clean_text = re.sub(r'<[^>]+>', '', clean_text)
                                 
-                                st.write(f"**{j}.** [{format_timestamp(source.get('timestamp', 0))}] "
-                                       f"{source.get('speaker', 'Unknown')}: "
-                                       f"{clean_text[:200]}...")
+                                # Display chunk with status
+                                st.markdown(f"""
+                                <div style="background-color: {status_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                    <strong>{j}.</strong> [{format_timestamp(source.get('timestamp', 0))}] {source.get('speaker', 'Unknown')}<br>
+                                    <em>{status}</em><br>
+                                    {clean_text[:200]}...
+                                </div>
+                                """, unsafe_allow_html=True)
 
 def process_question(question):
     """Process user question and return response"""
@@ -339,12 +376,15 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             processing_time = time.time() - start_time
 
             # Prepare debug info
+            mock_sources = [{"text": chunk["chunk_text"][:200] + "...", "timestamp": chunk["start_timestamp"], "speaker": chunk["speaker"]} for chunk in mock_chunks]
             debug_info = {
                 'chunks_used': len(mock_chunks),
                 'total_chunks': len(mock_chunks),
                 'processing_time': f"{processing_time:.2f}",
                 'model': 'gpt-4o-mini',
-                'sources': [{"text": chunk["chunk_text"][:200] + "...", "timestamp": chunk["start_timestamp"], "speaker": chunk["speaker"]} for chunk in mock_chunks],
+                'sources': mock_sources,
+                'all_selected_chunks': mock_sources,
+                'used_chunk_indices': list(range(len(mock_chunks))),
                 'basti_tone': st.session_state.basti_tone
             }
 
@@ -412,6 +452,8 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             'processing_time': f"{processing_time:.2f}",
             'model': 'gpt-4o-mini',
             'sources': response.get('sources', []),
+            'all_selected_chunks': response.get('all_selected_chunks', []),
+            'used_chunk_indices': response.get('used_chunk_indices', []),
             'basti_tone': st.session_state.basti_tone,
             'clarification_mode': response.get('clarification_mode', False)
         }
@@ -885,7 +927,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.1.4 - Response Variations & Bug Fixes
+        Version 2.2.0 - Enhanced Debug View with All Chunks & Usage Status
     </div>
     """, unsafe_allow_html=True)
 

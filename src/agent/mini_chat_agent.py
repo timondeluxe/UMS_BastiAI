@@ -377,6 +377,8 @@ class MiniChatAgent:
                     return {
                         "answer": f"{intro}\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
                         "sources": self._format_sources(relevant_chunks[:10]),
+                        "all_selected_chunks": self._format_sources(relevant_chunks),
+                        "used_chunk_indices": list(range(min(10, len(relevant_chunks)))),
                         "confidence": confidence,
                         "context_chunks_used": 10,
                         "total_chunks_found": len(relevant_chunks),
@@ -409,6 +411,8 @@ class MiniChatAgent:
                     return {
                         "answer": f"{result['answer']}\n\n{followup_intro}\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
                         "sources": self._format_sources(relevant_chunks[:30]),
+                        "all_selected_chunks": self._format_sources(relevant_chunks),
+                        "used_chunk_indices": list(range(min(30, len(relevant_chunks)))),
                         "confidence": confidence,
                         "context_chunks_used": result['context_chunks_used'],
                         "total_chunks_found": result['total_chunks_found'],
@@ -421,6 +425,8 @@ class MiniChatAgent:
                 return {
                     "answer": "Entschuldigung, ich konnte keine relevanten Informationen zu Ihrer Frage finden.",
                     "sources": [],
+                    "all_selected_chunks": [],
+                    "used_chunk_indices": [],
                     "confidence": 0.0,
                     "context_chunks_used": 0,
                     "total_chunks_found": 0
@@ -442,6 +448,8 @@ class MiniChatAgent:
             response = {
                 "answer": answer,
                 "sources": self._format_sources(context_chunks),
+                "all_selected_chunks": self._format_sources(relevant_chunks),  # All chunks found
+                "used_chunk_indices": list(range(len(context_chunks))),  # Indices of chunks actually used
                 "confidence": confidence,
                 "context_chunks_used": len(context_chunks),
                 "total_chunks_found": len(relevant_chunks),
@@ -463,6 +471,8 @@ class MiniChatAgent:
             return {
                 "answer": f"Entschuldigung, es ist ein Fehler aufgetreten: {str(e)}",
                 "sources": [],
+                "all_selected_chunks": [],
+                "used_chunk_indices": [],
                 "confidence": 0.0,
                 "context_chunks_used": 0,
                 "total_chunks_found": 0
