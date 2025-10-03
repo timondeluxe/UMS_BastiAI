@@ -409,11 +409,17 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
             logger.warning("No question strategy to update")
             return None
         
-        # Build conversation text
+        # Build conversation text with user answers
         conversation_text = []
         for entry in conversation_history:
-            conversation_text.append(f"Frage: {entry.get('question', '')}")
-            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+            # Bot's question to user
+            bot_question = entry.get('answer', '')  # The bot's clarification question
+            conversation_text.append(f"Bot fragt: {bot_question}")
+            
+            # User's answer (if provided)
+            user_answer = entry.get('user_answer', '')
+            if user_answer:
+                conversation_text.append(f"Nutzer antwortet: {user_answer}")
         
         conversation_context = "\n".join(conversation_text)
         
@@ -521,8 +527,12 @@ Antworte mit einem JSON-Objekt, das für jede Frage angibt, ob sie beantwortet w
         # Build conversation context
         conversation_text = []
         for entry in conversation_history:
-            conversation_text.append(f"Frage: {entry.get('question', '')}")
-            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+            bot_question = entry.get('answer', '')
+            conversation_text.append(f"Bot fragt: {bot_question}")
+            
+            user_answer = entry.get('user_answer', '')
+            if user_answer:
+                conversation_text.append(f"Nutzer antwortet: {user_answer}")
         
         conversation_context = "\n".join(conversation_text)
         
@@ -606,8 +616,12 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
         # Build conversation context
         conversation_text = []
         for entry in conversation_history:
-            conversation_text.append(f"Frage: {entry.get('question', '')}")
-            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+            bot_question = entry.get('answer', '')
+            conversation_text.append(f"Bot fragt: {bot_question}")
+            
+            user_answer = entry.get('user_answer', '')
+            if user_answer:
+                conversation_text.append(f"Nutzer antwortet: {user_answer}")
         
         conversation_context = "\n".join(conversation_text) if conversation_text else "Keine vorherige Unterhaltung"
         
@@ -706,6 +720,14 @@ class MiniChatAgent:
                 if not self.clarification_mode.question_strategy and len(self.conversation_history) == 0:
                     logger.info("Creating question strategy for iterative mode")
                     self.clarification_mode.create_question_strategy(question, relevant_chunks)
+                else:
+                    # This is a follow-up answer from the user
+                    # Add the user's answer to the last bot question in history
+                    if self.conversation_history:
+                        last_entry = self.conversation_history[-1]
+                        # Store user's answer as a follow-up
+                        last_entry['user_answer'] = question
+                        logger.info(f"User answer added to history: {question[:50]}...")
                 
                 # Check if we have enough specificity for a final answer
                 readiness_check = self.clarification_mode.check_if_ready_for_final_answer(
@@ -720,11 +742,15 @@ class MiniChatAgent:
                     context_chunks = relevant_chunks[:30]
                     context_text = self._build_context(context_chunks)
                     
-                    # Build full conversation context
+                    # Build full conversation context with user answers
                     conversation_text = []
                     for entry in self.conversation_history:
-                        conversation_text.append(f"Frage: {entry.get('question', '')}")
-                        conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+                        bot_question = entry.get('answer', '')
+                        conversation_text.append(f"Bot fragt: {bot_question}")
+                        
+                        user_answer = entry.get('user_answer', '')
+                        if user_answer:
+                            conversation_text.append(f"Nutzer antwortet: {user_answer}")
                     conversation_context = "\n\n".join(conversation_text)
                     
                     # Generate comprehensive answer
@@ -803,11 +829,23 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                     answer = f"{intro}\n\n{single_question}"
                     
                     # Add to history
-                    self.conversation_history.append({
-                        "question": question,
-                        "answer": answer,
-                        "timestamp": self._get_timestamp()
-                    })
+                    if len(self.conversation_history) == 0:
+                        # First question - add initial entry with user's initial question
+                        self.conversation_history.append({
+                            "question": question,  # Initial user question (e.g., "Ich möchte abnehmen")
+                            "answer": answer,  # Bot's first clarification question
+                            "timestamp": self._get_timestamp()
+                        })
+                        logger.info("Added first entry to conversation history")
+                    else:
+                        # Not the first - add new entry for the next clarification question
+                        # (user's answer was already added above as 'user_answer' to the previous entry)
+                        self.conversation_history.append({
+                            "question": None,  # No new initial question
+                            "answer": answer,  # Bot's next clarification question
+                            "timestamp": self._get_timestamp()
+                        })
+                        logger.info(f"Added follow-up entry to conversation history (total: {len(self.conversation_history)})")
                     
                     return {
                         "answer": answer,
