@@ -283,7 +283,7 @@ def display_chat_history():
                                 
                                 # Display chunk with status
                                 st.markdown(f"""
-                                <div style="background-color: {status_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                <div style="background-color: {status_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: #000000;">
                                     <strong>{j}.</strong> [{format_timestamp(source.get('timestamp', 0))}] {source.get('speaker', 'Unknown')}<br>
                                     <em>{status}</em><br>
                                     {clean_text[:200]}...
