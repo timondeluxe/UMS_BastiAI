@@ -24,6 +24,7 @@ class ClarificationMode:
         self.openai_client = openai_client
         self.video_processor = video_processor
         self.clarification_history = []
+        self.iterative_mode = False  # One-question-at-a-time mode
         
     def is_question_too_vague(self, question: str) -> bool:
         """Erkennt, ob eine Frage zu unspezifisch ist"""
@@ -306,6 +307,139 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
     def get_clarification_history(self) -> List[Dict[str, Any]]:
         """Gibt die Nachfrage-Historie zurück"""
         return self.clarification_history
+    
+    def check_if_ready_for_final_answer(self, conversation_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Analysiert die Konversationshistorie und entscheidet, ob genug Spezifität vorhanden ist
+        für eine vollständige Antwort, oder ob noch eine Nachfrage nötig ist.
+        
+        Returns:
+            Dict mit 'ready' (bool) und optional 'reason' (str)
+        """
+        if not conversation_history:
+            return {"ready": False, "reason": "no_history"}
+        
+        # Build conversation context
+        conversation_text = []
+        for entry in conversation_history:
+            conversation_text.append(f"Frage: {entry.get('question', '')}")
+            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+        
+        conversation_context = "\n".join(conversation_text)
+        
+        # Ask GPT-4o to analyze if we have enough information
+        analysis_prompt = f"""Du bist ein Experte darin zu entscheiden, ob eine Unterhaltung genug Spezifität erreicht hat, um eine vollständige, hilfreiche Antwort zu geben.
+
+Analysiere die folgende Unterhaltung:
+
+{conversation_context}
+
+Deine Aufgabe: Entscheide, ob wir jetzt genug spezifische Informationen haben, um eine wirklich gute, umfassende Antwort zu geben, oder ob wir noch mehr Details brauchen.
+
+Eine Antwort ist bereit, wenn:
+- Konkrete, messbare Details vorhanden sind (Zahlen, Zeiträume, etc.)
+- Der Kontext klar ist (Situation, Ziel, Rahmenbedingungen)
+- Mindestens 2-3 spezifische Aspekte genannt wurden
+- Die Frage so konkret ist, dass man eine maßgeschneiderte Lösung geben kann
+
+Eine Antwort ist NICHT bereit, wenn:
+- Nur vage Aussagen gemacht wurden
+- Wichtige Details fehlen (Budget, Zeitrahmen, aktuelle Situation, etc.)
+- Weniger als 2-3 Nachfragen beantwortet wurden
+- Die Antworten sehr kurz oder unspezifisch sind
+
+Antworte NUR mit einem JSON-Objekt in folgendem Format:
+{{
+  "ready": true/false,
+  "confidence": 0.0-1.0,
+  "missing_info": "Was fehlt noch?" (nur wenn ready=false),
+  "reason": "Kurze Begründung"
+}}"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Du bist ein Experte für Gesprächsanalyse."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                max_tokens=200,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            result = json.loads(response.choices[0].message.content.strip())
+            logger.info(f"Readiness check: {result}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Readiness check failed: {e}")
+            # Default: not ready after less than 3 exchanges
+            return {
+                "ready": len(conversation_history) >= 3,
+                "confidence": 0.5,
+                "reason": "Default check based on conversation length"
+            }
+    
+    def generate_single_clarification_question(self, question: str, conversation_history: List[Dict[str, Any]], context_chunks: List[Dict[str, Any]]) -> str:
+        """
+        Generiert EINE gezielte Nachfrage basierend auf der bisherigen Unterhaltung.
+        """
+        # Build conversation context
+        conversation_text = []
+        for entry in conversation_history:
+            conversation_text.append(f"Frage: {entry.get('question', '')}")
+            conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+        
+        conversation_context = "\n".join(conversation_text) if conversation_text else "Keine vorherige Unterhaltung"
+        
+        # Build context from chunks
+        context_text = self._build_context_for_clarification(context_chunks)
+        
+        clarification_prompt = f"""Du bist ein erfahrener Coach, der durch gezielte Einzelfragen mehr Details erfährt.
+
+Bisherige Unterhaltung:
+{conversation_context}
+
+Aktuelle Frage: "{question}"
+
+Verfügbarer Kontext aus Videos:
+{context_text[:1000]}
+
+Deine Aufgabe: Stelle EINE gezielte, konkrete Nachfrage, um mehr spezifische Details zu erfahren. 
+
+Die Nachfrage sollte:
+- Auf das bisher Gesagte aufbauen
+- Nach konkreten, messbaren Details fragen (Zahlen, Zeiträume, Budget, etc.)
+- Kurz und präzise sein
+- Dem Nutzer helfen, sein Problem besser zu formulieren
+
+Beispiele für gute Nachfragen:
+- "Wie viel Budget hast du dafür zur Verfügung?"
+- "Wie viele Stunden pro Woche kannst du dafür investieren?"
+- "Was hast du bisher schon versucht?"
+- "Bis wann möchtest du dieses Ziel erreichen?"
+
+Verwende einen freundlichen, direkten Ton mit "du". 
+Antworte NUR mit der Nachfrage, keine Erklärungen."""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Du bist ein erfahrener Coach."},
+                    {"role": "user", "content": clarification_prompt}
+                ],
+                max_tokens=150,
+                temperature=0.4
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            logger.error(f"Single clarification generation failed: {e}")
+            return "Kannst du mir mehr Details dazu geben?"
 
 
 class MiniChatAgent:
@@ -320,6 +454,7 @@ class MiniChatAgent:
         # Initialize clarification mode
         self.clarification_mode = ClarificationMode(self.openai_client, self.video_processor)
         self.clarification_mode_enabled = True  # Automatisch aktiviert
+        self.iterative_clarification_mode = False  # One-question-at-a-time mode
         
         logger.info("Initialized MiniChatAgent with ClarificationMode")
     
@@ -345,8 +480,128 @@ class MiniChatAgent:
                 question, video_id
             )
             
+            # ===== ITERATIVE CLARIFICATION MODE =====
+            if self.iterative_clarification_mode and relevant_chunks:
+                logger.info("Iterative clarification mode active")
+                
+                # Check if we have enough specificity for a final answer
+                readiness_check = self.clarification_mode.check_if_ready_for_final_answer(
+                    self.conversation_history
+                )
+                
+                if readiness_check.get('ready', False):
+                    # We have enough information - generate comprehensive answer
+                    logger.info("Ready for final answer - generating comprehensive response")
+                    
+                    # Use up to 30 chunks for comprehensive answer
+                    context_chunks = relevant_chunks[:30]
+                    context_text = self._build_context(context_chunks)
+                    
+                    # Build full conversation context
+                    conversation_text = []
+                    for entry in self.conversation_history:
+                        conversation_text.append(f"Frage: {entry.get('question', '')}")
+                        conversation_text.append(f"Antwort: {entry.get('answer', '')}")
+                    conversation_context = "\n\n".join(conversation_text)
+                    
+                    # Generate comprehensive answer
+                    final_prompt = f"""Basierend auf der gesamten Unterhaltung, gib jetzt eine umfassende, detaillierte und hilfreiche Antwort.
+
+Bisherige Unterhaltung:
+{conversation_context}
+
+Aktuelle Frage: {question}
+
+Verfügbare Informationen aus Videos:
+{context_text}
+
+Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelten Informationen. Sei spezifisch, konkret und hilfreich."""
+
+                    if system_prompt:
+                        system_content = system_prompt
+                    else:
+                        system_content = "Du bist ein hilfreicher Experte, der umfassende, maßgeschneiderte Lösungen gibt."
+                    
+                    response_obj = self.openai_client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": system_content},
+                            {"role": "user", "content": final_prompt}
+                        ],
+                        max_tokens=600,
+                        temperature=0.7
+                    )
+                    
+                    final_answer = response_obj.choices[0].message.content.strip()
+                    confidence = self._calculate_confidence(context_chunks, question)
+                    
+                    # Add to history
+                    self.conversation_history.append({
+                        "question": question,
+                        "answer": final_answer,
+                        "timestamp": self._get_timestamp()
+                    })
+                    
+                    return {
+                        "answer": final_answer,
+                        "sources": self._format_sources(context_chunks),
+                        "all_selected_chunks": self._format_sources(relevant_chunks),
+                        "used_chunk_indices": list(range(len(context_chunks))),
+                        "confidence": confidence,
+                        "context_chunks_used": len(context_chunks),
+                        "total_chunks_found": len(relevant_chunks),
+                        "clarification_mode": True,
+                        "iterative_mode": True,
+                        "final_answer": True
+                    }
+                    
+                else:
+                    # Not ready yet - ask ONE clarification question
+                    logger.info(f"Not ready for final answer: {readiness_check.get('reason', 'unknown')}")
+                    
+                    single_question = self.clarification_mode.generate_single_clarification_question(
+                        question, self.conversation_history, relevant_chunks
+                    )
+                    
+                    confidence = self._calculate_confidence(relevant_chunks[:10], question)
+                    
+                    # Random intro for single question
+                    intros = [
+                        "🤔 Interessant! Lass mich noch eine Sache wissen:",
+                        "💡 Um dir besser zu helfen, beantworte mir noch:",
+                        "🎯 Perfekt, eine Frage noch:",
+                        "⚡ Fast da! Noch eine wichtige Info:",
+                        "🔥 Super, sag mir noch:",
+                        "💪 Okay! Eine Sache noch:",
+                        "🚀 Verstehe! Lass mich noch wissen:"
+                    ]
+                    intro = random.choice(intros)
+                    
+                    answer = f"{intro}\n\n{single_question}"
+                    
+                    # Add to history
+                    self.conversation_history.append({
+                        "question": question,
+                        "answer": answer,
+                        "timestamp": self._get_timestamp()
+                    })
+                    
+                    return {
+                        "answer": answer,
+                        "sources": self._format_sources(relevant_chunks[:10]),
+                        "all_selected_chunks": self._format_sources(relevant_chunks),
+                        "used_chunk_indices": list(range(min(10, len(relevant_chunks)))),
+                        "confidence": confidence,
+                        "context_chunks_used": 10,
+                        "total_chunks_found": len(relevant_chunks),
+                        "clarification_mode": True,
+                        "iterative_mode": True,
+                        "final_answer": False
+                    }
+            
+            # ===== ORIGINAL CLARIFICATION MODE =====
             # Check if clarification mode is enabled
-            if self.clarification_mode_enabled and relevant_chunks:
+            if self.clarification_mode_enabled and relevant_chunks and not self.iterative_clarification_mode:
                 
                 # Check if this is a very vague question (first time asking) AND no conversation history
                 if (self.clarification_mode.is_question_too_vague(question) and 
@@ -600,6 +855,20 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
     def is_clarification_mode_enabled(self) -> bool:
         """Check if clarification mode is enabled"""
         return self.clarification_mode_enabled
+    
+    def toggle_iterative_clarification_mode(self, enabled: bool = None) -> bool:
+        """Toggle iterative clarification mode on/off"""
+        if enabled is None:
+            self.iterative_clarification_mode = not self.iterative_clarification_mode
+        else:
+            self.iterative_clarification_mode = enabled
+        
+        logger.info(f"Iterative clarification mode {'enabled' if self.iterative_clarification_mode else 'disabled'}")
+        return self.iterative_clarification_mode
+    
+    def is_iterative_clarification_mode_enabled(self) -> bool:
+        """Check if iterative clarification mode is enabled"""
+        return self.iterative_clarification_mode
 
 
 class InteractiveChatSession:

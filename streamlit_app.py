@@ -159,6 +159,8 @@ def initialize_session_state():
         st.session_state.mock_data_active = False
     if 'clarification_mode' not in st.session_state:
         st.session_state.clarification_mode = True
+    if 'iterative_clarification_mode' not in st.session_state:
+        st.session_state.iterative_clarification_mode = False
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -567,6 +569,18 @@ def main():
         if st.session_state.agent:
             st.session_state.agent.toggle_clarification_mode(clarification_mode)
         
+        # Iterativer Nachfrage-Modus toggle
+        iterative_clarification_mode = st.checkbox(
+            "🔄 Iterativer Nachfrage-Modus", 
+            value=st.session_state.iterative_clarification_mode,
+            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist"
+        )
+        st.session_state.iterative_clarification_mode = iterative_clarification_mode
+        
+        # Update agent iterative mode if agent exists
+        if st.session_state.agent:
+            st.session_state.agent.toggle_iterative_clarification_mode(iterative_clarification_mode)
+        
         # Test mode toggle
         test_mode = st.checkbox(
             "🔧 Test-Modus aktivieren", 
@@ -627,7 +641,11 @@ def main():
             # Show clarification mode status
             if hasattr(st.session_state.agent, 'is_clarification_mode_enabled'):
                 clarification_enabled = st.session_state.agent.is_clarification_mode_enabled()
-                if clarification_enabled:
+                iterative_enabled = st.session_state.agent.is_iterative_clarification_mode_enabled()
+                
+                if iterative_enabled:
+                    st.info("🔄 Iterativer Nachfrage-Modus: Aktiv")
+                elif clarification_enabled:
                     st.info("🤔 Nachfrage-Modus: Aktiv")
                 else:
                     st.warning("🤔 Nachfrage-Modus: Inaktiv")
@@ -822,10 +840,19 @@ def main():
         - Chat-Verlauf
         - Test-Daten hinzufügen
         - Nachfrage-Modus für spezifische Antworten
+        - Iterativer Nachfrage-Modus (Frage für Frage)
         """)
         
         # Nachfrage-Modus Info
-        if st.session_state.clarification_mode:
+        if st.session_state.iterative_clarification_mode:
+            st.success("""
+            **🔄 Iterativer Nachfrage-Modus aktiv:**
+            - Stellt EINE Nachfrage nach der anderen
+            - Sammelt schrittweise mehr Spezifität
+            - GPT-4o entscheidet, wann genug Info vorhanden ist
+            - Gibt am Ende eine umfassende, maßgeschneiderte Antwort
+            """)
+        elif st.session_state.clarification_mode:
             st.success("""
             **🤔 Nachfrage-Modus aktiv:**
             - Erkennt unspezifische Fragen automatisch
@@ -930,7 +957,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.2.0 - Enhanced Debug View with All Chunks & Usage Status
+        Version 2.3.0 - Iterativer Nachfrage-Flow für maximale Spezifität
     </div>
     """, unsafe_allow_html=True)
 
