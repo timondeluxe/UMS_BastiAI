@@ -275,18 +275,21 @@ def display_chat_history():
                                     status = "⚪ Ausgewählt, nicht genutzt"
                                     status_color = "#f8f9fa"  # Light gray
                                 
-                                # Clean text from HTML tags
+                                # Clean text from HTML tags and get full text
                                 clean_text = source.get('text', '')
+                                # Remove the truncation marker if present
+                                if clean_text.endswith('...'):
+                                    clean_text = clean_text[:-3]
                                 if '<' in clean_text and '>' in clean_text:
                                     import re
                                     clean_text = re.sub(r'<[^>]+>', '', clean_text)
                                 
-                                # Display chunk with status
+                                # Display chunk with status - reduced font size for better fit
                                 st.markdown(f"""
-                                <div style="background-color: {status_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: #000000;">
-                                    <strong>{j}.</strong> [{format_timestamp(source.get('timestamp', 0))}] {source.get('speaker', 'Unknown')}<br>
-                                    <em>{status}</em><br>
-                                    {clean_text[:200]}...
+                                <div style="background-color: {status_color}; padding: 10px; border-radius: 5px; margin-bottom: 10px; color: #000000; font-size: 12px; line-height: 1.4;">
+                                    <strong style="font-size: 13px;">{j}.</strong> <span style="font-size: 12px;">[{format_timestamp(source.get('timestamp', 0))}] {source.get('speaker', 'Unknown')}</span><br>
+                                    <em style="font-size: 11px;">{status}</em><br>
+                                    <span style="font-size: 12px;">{clean_text}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
 
@@ -376,7 +379,7 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             processing_time = time.time() - start_time
 
             # Prepare debug info
-            mock_sources = [{"text": chunk["chunk_text"][:200] + "...", "timestamp": chunk["start_timestamp"], "speaker": chunk["speaker"]} for chunk in mock_chunks]
+            mock_sources = [{"text": chunk["chunk_text"], "timestamp": chunk["start_timestamp"], "speaker": chunk["speaker"]} for chunk in mock_chunks]
             debug_info = {
                 'chunks_used': len(mock_chunks),
                 'total_chunks': len(mock_chunks),

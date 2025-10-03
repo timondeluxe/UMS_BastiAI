@@ -539,7 +539,7 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         sources = []
         for chunk in chunks:
             source = {
-                "text": chunk.get('chunk_text', '')[:200] + "...",
+                "text": chunk.get('chunk_text', ''),  # Return full text, not truncated
                 "timestamp": chunk.get('start_timestamp', 0),
                 "speaker": chunk.get('speaker', 'Unknown'),
                 "video_id": chunk.get('video_id', 'Unknown')
