@@ -376,7 +376,6 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
                 response_format={"type": "json_object"}
             )
             
-            import json
             strategy = json.loads(response.choices[0].message.content.strip())
             logger.info(f"Created question strategy with {len(strategy.get('questions', []))} questions")
             
@@ -457,7 +456,6 @@ Antworte mit einem JSON-Objekt, das für jede Frage angibt, ob sie beantwortet w
                 response_format={"type": "json_object"}
             )
             
-            import json
             update_result = json.loads(response.choices[0].message.content.strip())
             
             # Update the strategy
@@ -569,7 +567,6 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
                 response_format={"type": "json_object"}
             )
             
-            import json
             result = json.loads(response.choices[0].message.content.strip())
             logger.info(f"Readiness check: {result}")
             return result

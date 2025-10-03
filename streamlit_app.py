@@ -980,7 +980,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.3.1 - Fragen-Strategie verhindert Doppelfragen
+        Version 2.3.2 - Bugfix: JSON Import-Fehler behoben
     </div>
     """, unsafe_allow_html=True)
 
