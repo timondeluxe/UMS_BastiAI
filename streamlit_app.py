@@ -165,6 +165,8 @@ def initialize_session_state():
         st.session_state.clarification_mode = False
     if 'iterative_clarification_mode' not in st.session_state:
         st.session_state.iterative_clarification_mode = True
+    if 'creativity_level' not in st.session_state:
+        st.session_state.creativity_level = 0.7  # Default: Balanced (current standard)
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -628,26 +630,33 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         
         # Process question based on selected tone mode
         # Priority: O-Ton-BASTI-AI2 > Basti O-Ton > Default
-        # Pass use_dynamic_style to agent so iterative mode can also use it
+        # Pass use_dynamic_style and creativity_level to agent
+        creativity_level = st.session_state.creativity_level
+        
         if st.session_state.basti_tone_v2:
             # Use dynamic style mode (O-Ton-BASTI-AI2)
-            logger.info("Using O-Ton-BASTI-AI2 mode (dynamic style)")
+            logger.info(f"Using O-Ton-BASTI-AI2 mode (dynamic style) with creativity {creativity_level}")
             response = st.session_state.agent.ask_question(
                 question, 
                 use_dynamic_style=True,
-                force_dynamic_style=True  # Force for iterative final answer too
+                force_dynamic_style=True,  # Force for iterative final answer too
+                creativity_level=creativity_level
             )
         elif st.session_state.basti_tone:
             # Use custom system prompt for Basti tone (original mode)
-            logger.info("Using Basti O-Ton mode (static)")
+            logger.info(f"Using Basti O-Ton mode (static) with creativity {creativity_level}")
             response = st.session_state.agent.ask_question(
                 question, 
-                system_prompt=basti_system_prompt
+                system_prompt=basti_system_prompt,
+                creativity_level=creativity_level
             )
         else:
             # Use default system prompt
-            logger.info("Using default mode")
-            response = st.session_state.agent.ask_question(question)
+            logger.info(f"Using default mode with creativity {creativity_level}")
+            response = st.session_state.agent.ask_question(
+                question,
+                creativity_level=creativity_level
+            )
         
         processing_time = time.time() - start_time
         
@@ -780,6 +789,44 @@ def main():
             help="⚠️ VORSICHT: Sehr langsam! Aktiviert detaillierte Qualitätsanalyse mit Chunk Coverage, Knowledge Gap und Hallucination Risk"
         )
         st.session_state.debug_mode_ai = debug_mode_ai
+        
+        st.divider()
+        
+        # Creativity Level Slider
+        st.subheader("🎨 Kreativitätsstufe")
+        creativity_level = st.slider(
+            "Quelltreue vs. Kreativität",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state.creativity_level,
+            step=0.1,
+            help="""
+            Steuert wie eng sich die Antworten an den Video-Chunks orientieren:
+            
+            • 0.0 = Maximal restriktiv
+              - Nur Informationen aus Chunks
+              - Keine Ergänzungen oder Interpretationen
+              - Reine Zusammenfassung
+              
+            • 0.5 = Ausgewogen (empfohlen)
+              - Hauptsächlich Chunk-Informationen
+              - Leichte Erklärungen und Verbindungen
+              
+            • 1.0 = Maximal kreativ
+              - Chunks als Basis
+              - Viele LLM-Ergänzungen möglich
+              - Interpretationen und Kontext
+            """
+        )
+        st.session_state.creativity_level = creativity_level
+        
+        # Visual indicator
+        if creativity_level <= 0.3:
+            st.success(f"🔒 Sehr restriktiv ({creativity_level:.1f}) - Nur Chunk-Infos")
+        elif creativity_level <= 0.6:
+            st.info(f"⚖️ Ausgewogen ({creativity_level:.1f}) - Chunks + leichte Ergänzungen")
+        else:
+            st.warning(f"🎨 Kreativ ({creativity_level:.1f}) - Chunks + viele Ergänzungen")
         
         # Basti O-Ton toggle
         basti_tone = st.checkbox(

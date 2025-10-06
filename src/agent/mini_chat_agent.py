@@ -653,7 +653,8 @@ class MiniChatAgent:
     
     def ask_question(self, question: str, video_id: Optional[str] = None, 
                     context_limit: int = 20, system_prompt: Optional[str] = None,
-                    use_dynamic_style: bool = False, force_dynamic_style: bool = False) -> Dict[str, Any]:
+                    use_dynamic_style: bool = False, force_dynamic_style: bool = False,
+                    creativity_level: float = 0.7) -> Dict[str, Any]:
         """
         Ask a question about video content with clarification mode
         
@@ -905,8 +906,8 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                 final_system_prompt = self._generate_dynamic_system_prompt(style_guide)
                 logger.info("Generated dynamic system prompt based on analyzed style")
             
-            # Generate answer using LLM
-            answer = self._generate_answer(question, context_text, final_system_prompt)
+            # Generate answer using LLM with creativity level
+            answer = self._generate_answer(question, context_text, final_system_prompt, creativity_level)
             
             # Calculate confidence based on chunk relevance
             confidence = self._calculate_confidence(context_chunks, question)
@@ -960,8 +961,35 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
         
         return "\n\n".join(context_parts)
     
-    def _generate_answer(self, question: str, context: str, system_prompt: Optional[str] = None) -> str:
-        """Generate answer using OpenAI LLM"""
+    def _generate_answer(self, question: str, context: str, system_prompt: Optional[str] = None, creativity_level: float = 0.7) -> str:
+        """Generate answer using OpenAI LLM with adjustable creativity level"""
+        
+        # Adjust instructions based on creativity level
+        if creativity_level <= 0.3:
+            # Very restrictive - stick to chunks only
+            creativity_instruction = """
+WICHTIG - STRIKTE QUELLTREUE (Kreativität: Niedrig):
+- Verwende NUR Informationen, die DIREKT in den bereitgestellten Chunks enthalten sind
+- Keine Ergänzungen oder Interpretationen über die Chunks hinaus
+- Wenn die Antwort nicht vollständig in den Chunks ist, sage das ehrlich
+- Du darfst die Information umformulieren und zusammenfassen, aber NICHTS hinzufügen"""
+        elif creativity_level <= 0.6:
+            # Balanced - mainly chunks with light additions
+            creativity_instruction = """
+WICHTIG - AUSGEWOGENE ANTWORT (Kreativität: Mittel):
+- Basiere deine Antwort hauptsächlich auf den bereitgestellten Chunks
+- Du darfst logische Verbindungen zwischen Chunk-Informationen herstellen
+- Leichte Erklärungen zu Fachbegriffen aus den Chunks sind erlaubt
+- Halte Ergänzungen minimal und klar als solche erkennbar"""
+        else:
+            # Creative - chunks as basis, more additions allowed
+            creativity_instruction = """
+WICHTIG - KREATIVE ANTWORT (Kreativität: Hoch):
+- Nutze die Chunks als Grundlage und Ausgangspunkt
+- Du darfst umfangreiche Erklärungen und Kontext hinzufügen
+- Interpretationen und Schlussfolgerungen sind erlaubt
+- Verbinde Chunk-Informationen mit allgemeinem Wissen
+- Bleibe aber sachlich korrekt"""
         
         # Use custom system prompt if provided, otherwise use default
         if system_prompt:
@@ -971,7 +999,9 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich."""
+{creativity_instruction}
+
+Antworte basierend auf dem bereitgestellten Kontext."""
         else:
             system_content = "Du bist ein hilfreicher Assistent für Video-Inhalte."
             user_prompt = f"""Du bist ein hilfreicher Assistent, der Fragen zu Video-Inhalten beantwortet.
@@ -981,7 +1011,17 @@ Kontext aus dem Video:
 
 Frage: {question}
 
-Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im Kontext gefunden werden kann, sage das ehrlich. Verwende deutsche Sprache und sei präzise."""
+{creativity_instruction}
+
+Verwende deutsche Sprache und sei präzise."""
+
+        # Map creativity level to temperature (0.0-0.3 → 0.1, 0.4-0.6 → 0.3, 0.7-1.0 → 0.7)
+        if creativity_level <= 0.3:
+            temperature = 0.1
+        elif creativity_level <= 0.6:
+            temperature = 0.3
+        else:
+            temperature = creativity_level  # Use creativity level as temperature for high values
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -991,9 +1031,10 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
                     {"role": "user", "content": user_prompt}
                 ],
                 max_tokens=500,
-                temperature=0.1
+                temperature=temperature
             )
             
+            logger.info(f"Generated answer with creativity level {creativity_level} (temperature: {temperature})")
             return response.choices[0].message.content.strip()
             
         except Exception as e:
