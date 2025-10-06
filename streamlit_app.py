@@ -225,8 +225,8 @@ def display_chat_history():
                 """, unsafe_allow_html=True)
                 st.caption(f"🕒 {message['timestamp']}")
                 
-                # Show quality scores (always visible, not just in debug mode)
-                if 'quality_scores' in message:
+                # Show quality scores (only in debug mode)
+                if st.session_state.debug_mode and 'quality_scores' in message and message.get('quality_scores'):
                     quality_scores = message['quality_scores']
                     
                     # Get scores with default values if analysis is pending
@@ -280,18 +280,41 @@ def display_chat_history():
                     
                     # Show analysis details in expander if available
                     if quality_scores.get('analysis_details') and quality_scores.get('analysis_details') != 'Pending':
-                        with st.expander("📋 Qualitäts-Analyse Details"):
+                        with st.expander("📋 Detaillierte Qualitäts-Analyse", expanded=False):
+                            # Summary
+                            st.markdown("### 📊 Zusammenfassung")
                             st.write(quality_scores.get('analysis_details', ''))
                             
+                            # Coverage breakdown if available
+                            if quality_scores.get('coverage_breakdown'):
+                                breakdown = quality_scores['coverage_breakdown']
+                                st.markdown("### 🔢 Coverage Breakdown")
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("Gesamt Sätze", breakdown.get('total_sentences', 'N/A'))
+                                with col2:
+                                    st.metric("Aus Chunks", breakdown.get('sourced_sentences', 'N/A'))
+                                with col3:
+                                    st.metric("Hinzugefügt", breakdown.get('added_sentences', 'N/A'))
+                            
+                            # Detailed reasoning
+                            if quality_scores.get('detailed_reasoning'):
+                                st.markdown("### 🔍 Detailliertes Reasoning")
+                                st.markdown(quality_scores.get('detailed_reasoning', ''))
+                            
+                            # Specific gaps
                             if quality_scores.get('specific_gaps'):
-                                st.write("**Gefüllte Wissenslücken:**")
+                                st.markdown("### 🔧 Gefüllte Wissenslücken")
+                                st.info("Diese Informationen wurden vom LLM hinzugefügt:")
                                 for gap in quality_scores.get('specific_gaps', []):
                                     st.write(f"• {gap}")
                             
+                            # Potential hallucinations
                             if quality_scores.get('potential_hallucinations'):
-                                st.write("**Potenzielle Halluzinationen:**")
+                                st.markdown("### ⚠️ Potenzielle Halluzinationen")
+                                st.warning("Diese Aussagen sind NICHT in den Chunks enthalten:")
                                 for hall in quality_scores.get('potential_hallucinations', []):
-                                    st.write(f"⚠️ {hall}")
+                                    st.write(f"❌ {hall}")
                 
                 # Show debug information if enabled
                 if st.session_state.debug_mode and 'debug_info' in message:
@@ -543,18 +566,21 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
                 'basti_tone_v2': st.session_state.basti_tone_v2
             }
 
+            # Only perform quality analysis if debug mode is active AND chunks were used
+            needs_analysis = st.session_state.debug_mode and len(mock_chunks) > 0
+            
             return {
                 'answer': response,
                 'confidence': 0.85,  # High confidence for mock data
                 'debug_info': debug_info,
                 'original_question': question,
-                'needs_analysis': True,  # Flag to trigger quality analysis
+                'needs_analysis': needs_analysis,
                 'quality_scores': {  # Placeholder scores
                     'chunk_coverage': None,
                     'knowledge_gap': None,
                     'hallucination_risk': None,
                     'analysis_details': 'Pending'
-                }
+                } if needs_analysis else None
             }
 
         # Basti O-Ton System Prompt
@@ -635,18 +661,22 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             'clarification_mode': response.get('clarification_mode', False)
         }
         
+        # Only perform quality analysis if debug mode is active AND chunks were used
+        needs_analysis = (st.session_state.debug_mode and 
+                         response.get('context_chunks_used', 0) > 0)
+        
         return {
             'answer': response['answer'],
             'confidence': response['confidence'],
             'debug_info': debug_info,
             'original_question': question,
-            'needs_analysis': True,  # Flag to trigger quality analysis
-            'quality_scores': {  # Placeholder scores
+            'needs_analysis': needs_analysis,
+            'quality_scores': {  # Placeholder scores (only filled if needs_analysis is True)
                 'chunk_coverage': None,
                 'knowledge_gap': None,
                 'hallucination_risk': None,
                 'analysis_details': 'Pending'
-            }
+            } if needs_analysis else None
         }
         
     except Exception as e:

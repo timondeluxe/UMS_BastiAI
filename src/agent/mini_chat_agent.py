@@ -1033,7 +1033,9 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
     
     def analyze_answer_quality(self, answer: str, chunks: List[Dict[str, Any]], question: str) -> Dict[str, Any]:
         """
-        Analysiert die Qualität der Antwort im Vergleich zu den Chunks.
+        Analysiert die Qualität der Antwort im Vergleich zu den Chunks mit sehr detailliertem Reasoning.
+        Verwendet mehr Tokens für präzise Analyse.
+        
         Gibt drei Scores zurück:
         - chunk_coverage: Wie viel der Antwort basiert auf den Chunks? (0-100%)
         - knowledge_gap: Wie viel wurde vom LLM hinzugefügt/aufgefüllt? (0-100%)
@@ -1045,87 +1047,130 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
             question: Die ursprüngliche Frage
             
         Returns:
-            Dict mit den drei Scores und zusätzlichen Details
+            Dict mit den drei Scores und sehr detaillierten Erklärungen
         """
         if not chunks or not answer:
             return {
                 'chunk_coverage': 0.0,
                 'knowledge_gap': 100.0,
                 'hallucination_risk': 100.0,
-                'analysis_details': 'Keine Chunks oder Antwort vorhanden'
+                'analysis_details': '⚠️ Keine Chunks verwendet - Antwort basiert ausschließlich auf LLM-Wissen. Keine Quellenprüfung möglich.',
+                'detailed_reasoning': 'Es wurden keine Video-Chunks als Quelle verwendet.',
+                'specific_gaps': [],
+                'potential_hallucinations': []
             }
         
-        # Build context from chunks
+        # Build context from chunks with more detail
         chunk_texts = []
-        for chunk in chunks[:15]:  # Analyze top 15 chunks
+        for i, chunk in enumerate(chunks[:20], 1):  # Analyze up to 20 chunks for better coverage
             text = chunk.get('chunk_text', '')
             speaker = chunk.get('speaker', 'Unknown')
-            chunk_texts.append(f"[{speaker}]: {text}")
+            chunk_texts.append(f"CHUNK {i} [{speaker}]:\n{text}")
         
         combined_chunks = "\n\n".join(chunk_texts)
         
-        # Create analysis prompt
-        analysis_prompt = f"""Du bist ein Experte für die Analyse von KI-generierten Antworten und deren Quelltreue.
+        # Create detailed analysis prompt
+        analysis_prompt = f"""Du bist ein forensischer Experte für die Analyse von KI-generierten Antworten. Deine Aufgabe ist es, SEHR DETAILLIERT zu prüfen, welche Teile der Antwort aus den Quellen stammen und welche hinzugefügt wurden.
 
+═══════════════════════════════════════════════════════════════
 FRAGE DES NUTZERS:
 {question}
 
-VERFÜGBARE QUELL-CHUNKS (aus Videos):
+═══════════════════════════════════════════════════════════════
+VERFÜGBARE QUELL-CHUNKS (aus Video-Transkripten):
 {combined_chunks}
 
+═══════════════════════════════════════════════════════════════
 GENERIERTE ANTWORT:
 {answer}
 
-Deine Aufgabe: Analysiere die generierte Antwort im Vergleich zu den verfügbaren Chunks und bewerte drei Aspekte:
+═══════════════════════════════════════════════════════════════
+DEINE AUFGABE:
 
-1. **Chunk Coverage (0-100%)**: 
-   - Wie viel Prozent der Antwort basiert DIREKT auf Informationen aus den Chunks?
-   - 100% = Alle Informationen sind in den Chunks enthalten
-   - 0% = Keine Information aus den Chunks verwendet
+Analysiere die Antwort Satz für Satz und Aussage für Aussage:
 
-2. **Knowledge Gap / Filled Knowledge (0-100%)**:
-   - Wie viel Prozent der Antwort wurde vom LLM hinzugefügt, um Lücken zu füllen?
-   - Das umfasst: Logische Schlussfolgerungen, Verbindungen zwischen Ideen, Erklärungen, allgemeines Wissen
-   - 100% = Komplett vom LLM aufgefüllt
-   - 0% = Keine Lückenfüllung nötig
+1. CHUNK COVERAGE ANALYSE (0-100%):
+   - Gehe durch JEDEN Satz der Antwort
+   - Prüfe: Steht diese Information WÖRTLICH oder SINNGEMÄSS in den Chunks?
+   - Markiere GENAU welche Teile aus welchem Chunk stammen
+   - Berechne den Prozentsatz: (Anzahl Sätze aus Chunks / Gesamtzahl Sätze) × 100
+   
+   BEISPIEL für Reasoning:
+   "Satz 1: 'XYZ...' → ✅ Gefunden in CHUNK 3
+    Satz 2: 'ABC...' → ❌ NICHT in Chunks, vom LLM hinzugefügt
+    Satz 3: 'DEF...' → ✅ Sinngemäß in CHUNK 7 und 12
+    Coverage: 2 von 3 Sätzen = 67%"
 
-3. **Hallucination Risk (0-100%)**:
-   - Wie hoch ist das Risiko, dass die Antwort Informationen enthält, die NICHT in den Chunks sind und potenziell falsch sein könnten?
-   - 100% = Sehr hohes Risiko, viele unbelegte Behauptungen
-   - 0% = Kein Risiko, alles ist belegbar
+2. KNOWLEDGE GAP ANALYSE (0-100%):
+   - Was wurde vom LLM HINZUGEFÜGT, um die Antwort vollständig zu machen?
+   - Kategorien:
+     a) Logische Verbindungen zwischen Chunk-Aussagen
+     b) Erklärungen/Kontext zu Chunk-Informationen
+     c) Allgemeines Wissen zur Vervollständigung
+     d) Strukturierung/Formatierung
+   - Ist die Lückenfüllung hilfreich oder problematisch?
+   
+   BEISPIEL:
+   "30% der Antwort sind Verbindungen: 'deshalb', 'aus diesem Grund'
+    15% sind Erklärungen zu Fachbegriffen aus den Chunks
+    5% ist allgemeines Wissen (z.B. 'wie bekannt ist...')
+    Knowledge Gap: 50%"
 
-WICHTIGE UNTERSCHEIDUNG:
-- Knowledge Gap ist nicht unbedingt negativ (z.B. hilfreiche Erklärungen)
-- Hallucination Risk ist problematisch (z.B. erfundene Fakten)
+3. HALLUCINATION RISK ANALYSE (0-100%):
+   - KRITISCH: Welche konkreten FAKTEN/ZAHLEN/AUSSAGEN sind NICHT in den Chunks?
+   - Unterscheide:
+     a) ⚠️ HOHES RISIKO: Spezifische Behauptungen ohne Quelle (Fakten, Zahlen, Namen)
+     b) ⚡ MITTLERES RISIKO: Interpretationen die über Chunks hinausgehen
+     c) ✅ GERINGES RISIKO: Allgemeine Formulierungen/Übergänge
+   
+   BEISPIEL:
+   "❌ 'Studien zeigen 70% Verbesserung' → NICHT in Chunks! Hohes Risiko
+    ⚠️ 'Dies führt typischerweise zu...' → Interpretation, mittleres Risiko  
+    ✅ 'Zusammenfassend lässt sich sagen' → Formulierung, kein Risiko
+    Hallucination Risk: 35%"
 
-ANALYSIERE NUN:
-Gib eine detaillierte Analyse und bewerte jeden Aspekt mit einem Prozentsatz.
+═══════════════════════════════════════════════════════════════
+WICHTIGE REGELN:
 
-Antworte NUR mit einem JSON-Objekt in folgendem Format:
+- Sei STRENG: Nur wenn etwas wirklich in den Chunks steht, zählt es als Coverage
+- Sei DETAILLIERT: Nenne konkrete Beispiele was wo gefunden oder nicht gefunden wurde
+- Sei SPEZIFISCH: Keine vagen Aussagen - zeige genau welche Teile problematisch sind
+- Nutze die vollen Token: Detailliertes Reasoning ist wichtiger als Kürze
+
+═══════════════════════════════════════════════════════════════
+AUSGABE-FORMAT:
+
+Antworte NUR mit einem JSON-Objekt:
 {{
   "chunk_coverage": <0-100>,
   "knowledge_gap": <0-100>,
   "hallucination_risk": <0-100>,
-  "analysis_details": "Kurze Erklärung der Bewertung (2-3 Sätze)",
-  "specific_gaps": ["Liste spezifischer Lücken, die gefüllt wurden"],
-  "potential_hallucinations": ["Liste potenzieller Halluzinationen"]
+  "analysis_details": "Zusammenfassung in 2-3 Sätzen",
+  "detailed_reasoning": "SEHR DETAILLIERTE Analyse mit konkreten Beispielen aus der Antwort. Zeige GENAU welche Teile aus Chunks stammen und welche nicht. Mindestens 5-10 Sätze mit Beispielen!",
+  "specific_gaps": ["Liste KONKRETE Stellen wo LLM Wissen hinzugefügt hat, mit Beispiel-Zitaten"],
+  "potential_hallucinations": ["Liste KONKRETE Aussagen die NICHT in Chunks sind, mit direkten Zitaten aus der Antwort"],
+  "coverage_breakdown": {{
+    "total_sentences": <Anzahl>,
+    "sourced_sentences": <Anzahl>,
+    "added_sentences": <Anzahl>
+  }}
 }}"""
 
         try:
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o",  # Use GPT-4o for better analysis
+                model="gpt-4o",  # Use GPT-4o for high-quality analysis
                 messages=[
-                    {"role": "system", "content": "Du bist ein Experte für die Analyse von KI-generierten Antworten."},
+                    {"role": "system", "content": "Du bist ein forensischer Experte für KI-Antwortanalyse. Sei extrem detailliert und präzise."},
                     {"role": "user", "content": analysis_prompt}
                 ],
-                max_tokens=600,
-                temperature=0.2,  # Low temperature for consistent analysis
+                max_tokens=2000,  # Deutlich erhöht für detaillierte Analyse
+                temperature=0.1,  # Very low temperature for consistent, objective analysis
                 response_format={"type": "json_object"}
             )
             
             result = json.loads(response.choices[0].message.content.strip())
             
-            logger.info(f"Answer quality analysis completed: Coverage={result.get('chunk_coverage')}%, Gap={result.get('knowledge_gap')}%, Hallucination={result.get('hallucination_risk')}%")
+            logger.info(f"Detailed quality analysis completed: Coverage={result.get('chunk_coverage')}%, Gap={result.get('knowledge_gap')}%, Hallucination={result.get('hallucination_risk')}%")
             
             return result
             
@@ -1136,8 +1181,10 @@ Antworte NUR mit einem JSON-Objekt in folgendem Format:
                 'knowledge_gap': 50.0,
                 'hallucination_risk': 50.0,
                 'analysis_details': f'Analyse fehlgeschlagen: {str(e)}',
+                'detailed_reasoning': 'Die Analyse konnte aufgrund eines technischen Fehlers nicht durchgeführt werden.',
                 'specific_gaps': [],
-                'potential_hallucinations': []
+                'potential_hallucinations': [],
+                'coverage_breakdown': {'total_sentences': 0, 'sourced_sentences': 0, 'added_sentences': 0}
             }
     
     def _get_timestamp(self) -> str:
