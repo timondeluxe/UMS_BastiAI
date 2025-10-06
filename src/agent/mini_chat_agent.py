@@ -263,48 +263,6 @@ Antworte NUR mit den Nachfragen, keine zusätzlichen Erklärungen."""
         from datetime import datetime
         return datetime.now().isoformat()
     
-    def _get_random_answer_intro(self) -> str:
-        """Gibt eine zufällige Einleitung für Antworten zurück"""
-        intros = [
-            "BOOM, lasst es uns direkt angehen!",
-            "Perfekt, hier ist mein direkter Ansatz:",
-            "Alles klar, lass uns das sofort anpacken:",
-            "Genau das brauchst du - hier ist mein Plan:",
-            "Super Frage! Lass mich dir das direkt erklären:",
-            "Okay, hier ist mein ehrlicher Ansatz:",
-            "Das ist ein wichtiges Thema - lass uns das richtig angehen:",
-            "Verstehe! Hier ist mein direkter Ratschlag:",
-            "Gute Frage! Lass mich dir das sofort zeigen:",
-            "Hier ist mein ehrlicher Take dazu:",
-            "Das ist genau das, was du brauchst:",
-            "Lass uns das direkt und ehrlich angehen:",
-            "Hier ist mein direkter Ansatz für dich:",
-            "Perfekt! Lass mich dir das sofort erklären:",
-            "Das ist ein wichtiger Punkt - hier ist mein Plan:"
-        ]
-        return random.choice(intros)
-    
-    def _get_random_followup_intro(self) -> str:
-        """Gibt eine zufällige Einleitung für Nachfragen zurück"""
-        intros = [
-            "🤔 Um dir noch besser helfen zu können, habe ich noch ein paar weitere Fragen:",
-            "💡 Lass mich noch ein paar wichtige Details wissen:",
-            "🎯 Um dir gezielter helfen zu können, brauche ich noch:",
-            "⚡ Für eine noch bessere Antwort, erzähl mir noch:",
-            "🔥 Um das richtig zu lösen, brauche ich noch:",
-            "💪 Für den perfekten Plan, sag mir noch:",
-            "🚀 Um dir optimal zu helfen, erzähl mir:",
-            "✨ Für eine maßgeschneiderte Lösung, brauche ich:",
-            "🎪 Um das richtig anzugehen, sag mir noch:",
-            "💎 Für die beste Strategie, erzähl mir:",
-            "🔥 Um das richtig zu rocken, brauche ich noch:",
-            "⚡ Für den perfekten Durchbruch, sag mir:",
-            "🎯 Um dir gezielt zu helfen, erzähl mir noch:",
-            "💪 Für den besten Ansatz, brauche ich:",
-            "🚀 Um das richtig zu lösen, sag mir noch:"
-        ]
-        return random.choice(intros)
-    
     def get_clarification_history(self) -> List[Dict[str, Any]]:
         """Gibt die Nachfrage-Historie zurück"""
         return self.clarification_history
@@ -819,19 +777,8 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                     
                     confidence = self._calculate_confidence(relevant_chunks[:10], question)
                     
-                    # Random intro for single question
-                    intros = [
-                        "🤔 Interessant! Lass mich noch eine Sache wissen:",
-                        "💡 Um dir besser zu helfen, beantworte mir noch:",
-                        "🎯 Perfekt, eine Frage noch:",
-                        "⚡ Fast da! Noch eine wichtige Info:",
-                        "🔥 Super, sag mir noch:",
-                        "💪 Okay! Eine Sache noch:",
-                        "🚀 Verstehe! Lass mich noch wissen:"
-                    ]
-                    intro = random.choice(intros)
-                    
-                    answer = f"{intro}\n\n{single_question}"
+                    # Direct question without intro fluff
+                    answer = single_question
                     
                     # Add to history
                     if len(self.conversation_history) == 0:
@@ -882,21 +829,9 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                     # Calculate confidence based on found chunks
                     confidence = self._calculate_confidence(relevant_chunks[:10], question)
                     
-                    # Zufällige Einleitung für Nachfragen
-                    intro_variations = [
-                        "🤔 Deine Frage ist noch etwas unspezifisch. Um dir die beste Antwort zu geben, brauche ich mehr Details:",
-                        "💡 Lass mich das besser verstehen. Für eine gezielte Antwort brauche ich noch:",
-                        "🎯 Um dir optimal helfen zu können, erzähl mir noch:",
-                        "⚡ Für die beste Lösung brauche ich noch ein paar Details:",
-                        "🔥 Um das richtig anzugehen, sag mir noch:",
-                        "💪 Für den perfekten Plan brauche ich:",
-                        "🚀 Um dir gezielt zu helfen, erzähl mir:",
-                        "✨ Für eine maßgeschneiderte Antwort, sag mir:"
-                    ]
-                    intro = random.choice(intro_variations)
-                    
+                    # Direct questions without intro fluff
                     return {
-                        "answer": f"{intro}\n\n{clarification}\n\nBitte beantworte diese Fragen, dann kann ich dir eine gezielte Antwort geben!",
+                        "answer": clarification,
                         "sources": self._format_sources(relevant_chunks[:10]),
                         "all_selected_chunks": self._format_sources(relevant_chunks),
                         "used_chunk_indices": list(range(min(10, len(relevant_chunks)))),
@@ -926,11 +861,9 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
                         "timestamp": self._get_timestamp()
                     })
                     
-                    # Zufällige Einleitung für Nachfragen
-                    followup_intro = self.clarification_mode._get_random_followup_intro()
-                    
+                    # Direct followup questions without intro fluff
                     return {
-                        "answer": f"{result['answer']}\n\n{followup_intro}\n\n{result['followup_questions']}\n\nBitte beantworte diese, dann kann ich dir noch gezielter helfen!",
+                        "answer": f"{result['answer']}\n\n{result['followup_questions']}",
                         "sources": self._format_sources(relevant_chunks[:30]),
                         "all_selected_chunks": self._format_sources(relevant_chunks),
                         "used_chunk_indices": list(range(min(30, len(relevant_chunks)))),
