@@ -301,8 +301,57 @@ def display_chat_history():
                                 with col3:
                                     st.metric("Hinzugefügt", breakdown.get('added_sentences', 'N/A'))
                             
-                            # Detailed reasoning
-                            if quality_scores.get('detailed_reasoning'):
+                            # Sentence-by-sentence analysis with visual separation
+                            if quality_scores.get('sentence_analysis'):
+                                st.markdown("### 🔍 Satz-für-Satz Analyse")
+                                st.markdown("*Prüfung jeder Aussage: Stammt sie aus den Chunks oder wurde sie hinzugefügt?*")
+                                
+                                for idx, analysis in enumerate(quality_scores.get('sentence_analysis', []), 1):
+                                    status = analysis.get('status', 'unknown')
+                                    
+                                    # Define colors and icons based on status
+                                    if status == 'found':
+                                        bg_color = "#d4edda"  # Light green
+                                        icon = "✅"
+                                        status_text = "In Chunks gefunden"
+                                        border_color = "#28a745"
+                                    elif status == 'partial':
+                                        bg_color = "#fff3cd"  # Light yellow
+                                        icon = "⚠️"
+                                        status_text = "Teilweise in Chunks"
+                                        border_color = "#ffc107"
+                                    elif status == 'not_found':
+                                        bg_color = "#f8d7da"  # Light red
+                                        icon = "❌"
+                                        status_text = "NICHT in Chunks"
+                                        border_color = "#dc3545"
+                                    else:  # added
+                                        bg_color = "#d1ecf1"  # Light blue
+                                        icon = "➕"
+                                        status_text = "Vom LLM hinzugefügt"
+                                        border_color = "#17a2b8"
+                                    
+                                    # Create visual box for each sentence
+                                    st.markdown(f"""
+                                    <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px;">
+                                        <div style="font-weight: bold; color: #333; margin-bottom: 10px;">
+                                            {icon} Analyse #{idx} - {status_text}
+                                        </div>
+                                        <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0;">
+                                            <strong>📝 Aussage in der Antwort:</strong><br>
+                                            <em>"{analysis.get('answer_statement', 'N/A')}"</em>
+                                        </div>
+                                        {"<div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0;'><strong>📚 Quelle (" + analysis.get('source_chunk', 'N/A') + "):</strong><br><em>\"" + analysis.get('chunk_quote', 'N/A') + "\"</em></div>" if analysis.get('chunk_quote') else ""}
+                                        <div style="margin-top: 10px; color: #555; font-size: 0.9em;">
+                                            <strong>💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                st.markdown("---")
+                            
+                            # Detailed reasoning (legacy format)
+                            if quality_scores.get('detailed_reasoning') and not quality_scores.get('sentence_analysis'):
                                 st.markdown("### 🔍 Detailliertes Reasoning")
                                 st.markdown(quality_scores.get('detailed_reasoning', ''))
                             

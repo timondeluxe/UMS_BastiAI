@@ -1193,6 +1193,15 @@ Antworte NUR mit einem JSON-Objekt:
   "hallucination_risk": <0-100>,
   "analysis_details": "Zusammenfassung in 2-3 Sätzen",
   "detailed_reasoning": "SEHR DETAILLIERTE Analyse mit konkreten Beispielen aus der Antwort. Zeige GENAU welche Teile aus Chunks stammen und welche nicht. Mindestens 5-10 Sätze mit Beispielen!",
+  "sentence_analysis": [
+    {{
+      "answer_statement": "Direktes Zitat aus der Antwort",
+      "status": "found|partial|not_found|added",
+      "source_chunk": "CHUNK X" oder null,
+      "chunk_quote": "Relevantes Zitat aus dem Chunk" oder null,
+      "explanation": "Kurze Erklärung: Warum wurde es als found/partial/not_found/added markiert"
+    }}
+  ],
   "specific_gaps": ["Liste KONKRETE Stellen wo LLM Wissen hinzugefügt hat, mit Beispiel-Zitaten"],
   "potential_hallucinations": ["Liste KONKRETE Aussagen die NICHT in Chunks sind, mit direkten Zitaten aus der Antwort"],
   "coverage_breakdown": {{
@@ -1200,7 +1209,13 @@ Antworte NUR mit einem JSON-Objekt:
     "sourced_sentences": <Anzahl>,
     "added_sentences": <Anzahl>
   }}
-}}"""
+}}
+
+WICHTIG für sentence_analysis:
+- "found": Information ist DIREKT oder SINNGEMÄSS in den Chunks (z.B. "2000 Kalorien" und "2000 kcal" sind gleichwertig)
+- "partial": Teil der Information ist in Chunks, aber erweitert/interpretiert
+- "not_found": Information ist NICHT in den Chunks
+- "added": Vom LLM hinzugefügte Verbindungen/Erklärungen (kann hilfreich sein!)"""
 
         try:
             response = self.openai_client.chat.completions.create(
