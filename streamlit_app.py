@@ -333,17 +333,17 @@ def display_chat_history():
                                     
                                     # Create visual box for each sentence
                                     st.markdown(f"""
-                                    <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px;">
-                                        <div style="font-weight: bold; color: #333; margin-bottom: 10px;">
+                                    <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
+                                        <div style="font-weight: bold; color: #000000; margin-bottom: 10px;">
                                             {icon} Analyse #{idx} - {status_text}
                                         </div>
-                                        <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0;">
-                                            <strong>📝 Aussage in der Antwort:</strong><br>
-                                            <em>"{analysis.get('answer_statement', 'N/A')}"</em>
+                                        <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;">
+                                            <strong style="color: #000000;">📝 Aussage in der Antwort:</strong><br>
+                                            <em style="color: #000000;">"{analysis.get('answer_statement', 'N/A')}"</em>
                                         </div>
-                                        {"<div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0;'><strong>📚 Quelle (" + analysis.get('source_chunk', 'N/A') + "):</strong><br><em>\"" + analysis.get('chunk_quote', 'N/A') + "\"</em></div>" if analysis.get('chunk_quote') else ""}
-                                        <div style="margin-top: 10px; color: #555; font-size: 0.9em;">
-                                            <strong>💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
+                                        {"<div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;'><strong style='color: #000000;'>📚 Quelle (" + analysis.get('source_chunk', 'N/A') + "):</strong><br><em style='color: #000000;'>\"" + analysis.get('chunk_quote', 'N/A') + "\"</em></div>" if analysis.get('chunk_quote') else ""}
+                                        <div style="margin-top: 10px; color: #000000; font-size: 0.9em;">
+                                            <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
                                         </div>
                                     </div>
                                     """, unsafe_allow_html=True)
