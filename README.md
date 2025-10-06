@@ -6,8 +6,12 @@ Ein intelligenter Video Chat Agent mit Bastians charakteristischem Performance-C
 
 - **Basti O-Ton**: Automatisch aktivierter charakteristischer Performance-Coach Stil
 - **O-Ton-BASTI-AI2**: Dynamischer Modus, der Sprachstil aus Video-Chunks analysiert und adaptiert
+- **Intelligente Qualitätsanalyse**: AI-basierte Bewertung mit drei Scores
+  - 📊 **Chunk Coverage**: Wie viel basiert auf den Quell-Chunks?
+  - 🔧 **Knowledge Gap**: Wie viel wurde vom LLM hinzugefügt?
+  - ⚠️ **Hallucination Risk**: Risiko für nicht belegte Informationen
 - **Video Content Q&A**: Intelligente Beantwortung von Fragen zu Video-Inhalten
-- **Confidence Scoring**: Vertrauens-Score für jede Antwort
+- **Nachgelagerte Analyse**: Scores werden dynamisch berechnet und angezeigt
 - **Debug Mode**: Detaillierte Informationen über Quellen und Verarbeitung
 - **Responsive Design**: Funktioniert auf allen Geräten
 

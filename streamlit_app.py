@@ -225,6 +225,74 @@ def display_chat_history():
                 """, unsafe_allow_html=True)
                 st.caption(f"🕒 {message['timestamp']}")
                 
+                # Show quality scores (always visible, not just in debug mode)
+                if 'quality_scores' in message:
+                    quality_scores = message['quality_scores']
+                    
+                    # Get scores with default values if analysis is pending
+                    chunk_coverage = quality_scores.get('chunk_coverage', None)
+                    knowledge_gap = quality_scores.get('knowledge_gap', None)
+                    hallucination_risk = quality_scores.get('hallucination_risk', None)
+                    
+                    # Determine colors based on scores
+                    def get_coverage_color(score):
+                        if score is None: return "#cccccc"
+                        if score >= 80: return "#4CAF50"  # Green
+                        if score >= 50: return "#FFC107"  # Yellow
+                        return "#F44336"  # Red
+                    
+                    def get_gap_color(score):
+                        if score is None: return "#cccccc"
+                        if score <= 20: return "#4CAF50"  # Green (wenig Gap ist gut)
+                        if score <= 50: return "#FFC107"  # Yellow
+                        return "#FF9800"  # Orange
+                    
+                    def get_hallucination_color(score):
+                        if score is None: return "#cccccc"
+                        if score <= 20: return "#4CAF50"  # Green
+                        if score <= 50: return "#FFC107"  # Yellow
+                        return "#F44336"  # Red
+                    
+                    coverage_color = get_coverage_color(chunk_coverage)
+                    gap_color = get_gap_color(knowledge_gap)
+                    hallucination_color = get_hallucination_color(hallucination_risk)
+                    
+                    coverage_text = f"{chunk_coverage:.0f}%" if chunk_coverage is not None else "⏳ Analysiere..."
+                    gap_text = f"{knowledge_gap:.0f}%" if knowledge_gap is not None else "⏳ Analysiere..."
+                    hallucination_text = f"{hallucination_risk:.0f}%" if hallucination_risk is not None else "⏳ Analysiere..."
+                    
+                    st.markdown(f"""
+                    <div style="display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px; background-color: {coverage_color}; padding: 10px; border-radius: 5px; color: white; text-align: center;">
+                            <div style="font-size: 0.8rem; opacity: 0.9;">📊 Chunk Coverage</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;">{coverage_text}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 150px; background-color: {gap_color}; padding: 10px; border-radius: 5px; color: white; text-align: center;">
+                            <div style="font-size: 0.8rem; opacity: 0.9;">🔧 Knowledge Gap</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;">{gap_text}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 150px; background-color: {hallucination_color}; padding: 10px; border-radius: 5px; color: white; text-align: center;">
+                            <div style="font-size: 0.8rem; opacity: 0.9;">⚠️ Hallucination Risk</div>
+                            <div style="font-size: 1.5rem; font-weight: bold;">{hallucination_text}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show analysis details in expander if available
+                    if quality_scores.get('analysis_details') and quality_scores.get('analysis_details') != 'Pending':
+                        with st.expander("📋 Qualitäts-Analyse Details"):
+                            st.write(quality_scores.get('analysis_details', ''))
+                            
+                            if quality_scores.get('specific_gaps'):
+                                st.write("**Gefüllte Wissenslücken:**")
+                                for gap in quality_scores.get('specific_gaps', []):
+                                    st.write(f"• {gap}")
+                            
+                            if quality_scores.get('potential_hallucinations'):
+                                st.write("**Potenzielle Halluzinationen:**")
+                                for hall in quality_scores.get('potential_hallucinations', []):
+                                    st.write(f"⚠️ {hall}")
+                
                 # Show debug information if enabled
                 if st.session_state.debug_mode and 'debug_info' in message:
                     debug_info = message['debug_info']
@@ -321,6 +389,55 @@ def display_chat_history():
                                     <span style="font-size: 12px;">{clean_text}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
+
+def perform_quality_analysis(message_index: int):
+    """
+    Performs quality analysis for a specific message in the chat history.
+    Updates the message with quality scores.
+    """
+    if message_index >= len(st.session_state.chat_history):
+        return
+    
+    message = st.session_state.chat_history[message_index]
+    
+    # Check if analysis is needed
+    if not message.get('needs_analysis', False):
+        return
+    
+    # Perform analysis
+    try:
+        question = message.get('original_question', '')
+        answer = message.get('content', '')
+        debug_info = message.get('debug_info', {})
+        sources = debug_info.get('sources', [])
+        
+        # Convert sources to chunks format
+        chunks = []
+        for source in sources:
+            chunks.append({
+                'chunk_text': source.get('text', ''),
+                'speaker': source.get('speaker', 'Unknown')
+            })
+        
+        # Run quality analysis
+        quality_scores = st.session_state.agent.analyze_answer_quality(answer, chunks, question)
+        
+        # Update message with scores
+        st.session_state.chat_history[message_index]['quality_scores'] = quality_scores
+        st.session_state.chat_history[message_index]['needs_analysis'] = False
+        
+        logger.info(f"Quality analysis completed for message {message_index}")
+        
+    except Exception as e:
+        logger.error(f"Quality analysis failed: {e}")
+        # Set error scores
+        st.session_state.chat_history[message_index]['quality_scores'] = {
+            'chunk_coverage': None,
+            'knowledge_gap': None,
+            'hallucination_risk': None,
+            'analysis_details': f'Analyse fehlgeschlagen: {str(e)}'
+        }
+        st.session_state.chat_history[message_index]['needs_analysis'] = False
 
 def process_question(question):
     """Process user question and return response"""
@@ -429,7 +546,15 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             return {
                 'answer': response,
                 'confidence': 0.85,  # High confidence for mock data
-                'debug_info': debug_info
+                'debug_info': debug_info,
+                'original_question': question,
+                'needs_analysis': True,  # Flag to trigger quality analysis
+                'quality_scores': {  # Placeholder scores
+                    'chunk_coverage': None,
+                    'knowledge_gap': None,
+                    'hallucination_risk': None,
+                    'analysis_details': 'Pending'
+                }
             }
 
         # Basti O-Ton System Prompt
@@ -513,7 +638,15 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         return {
             'answer': response['answer'],
             'confidence': response['confidence'],
-            'debug_info': debug_info
+            'debug_info': debug_info,
+            'original_question': question,
+            'needs_analysis': True,  # Flag to trigger quality analysis
+            'quality_scores': {  # Placeholder scores
+                'chunk_coverage': None,
+                'knowledge_gap': None,
+                'hallucination_risk': None,
+                'analysis_details': 'Pending'
+            }
         }
         
     except Exception as e:
@@ -576,6 +709,16 @@ def main():
     
     # Initialize session state
     initialize_session_state()
+    
+    # Check if there are any pending quality analyses
+    # This runs BEFORE displaying the UI to update scores
+    if st.session_state.agent:
+        for i, message in enumerate(st.session_state.chat_history):
+            if message.get('type') == 'bot' and message.get('needs_analysis', False):
+                logger.info(f"Found pending quality analysis for message {i}, performing now...")
+                perform_quality_analysis(i)
+                # After completing analysis, rerun to show updated scores
+                st.rerun()
     
     # Initialize variables to avoid UnboundLocalError
     debug_mode = False
@@ -995,8 +1138,11 @@ def main():
                         'content': response['answer'],
                         'confidence': response['confidence'],
                         'timestamp': datetime.now().strftime("%H:%M:%S"),
-                        'debug_info': response['debug_info'],
-                        'clarification_mode': response.get('clarification_mode', False)
+                        'debug_info': response.get('debug_info', {}),
+                        'clarification_mode': response.get('clarification_mode', False),
+                        'original_question': response.get('original_question', question),
+                        'needs_analysis': response.get('needs_analysis', False),
+                        'quality_scores': response.get('quality_scores', {})
                     }
                     st.session_state.chat_history.append(bot_message)
                 
@@ -1028,7 +1174,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.4.0 - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
+        Version 2.5.0 - Intelligente Qualitätsanalyse: Coverage, Knowledge Gap & Hallucination Risk
     </div>
     """, unsafe_allow_html=True)
 

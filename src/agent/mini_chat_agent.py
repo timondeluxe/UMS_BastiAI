@@ -1011,7 +1011,7 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         return sources
     
     def _calculate_confidence(self, chunks: List[Dict[str, Any]], question: str) -> float:
-        """Calculate confidence based on chunk relevance"""
+        """Calculate confidence based on chunk relevance (legacy method, kept for backwards compatibility)"""
         
         if not chunks:
             return 0.0
@@ -1030,6 +1030,115 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         
         final_confidence = min(base_confidence + quality_bonus, 1.0)
         return round(final_confidence, 2)
+    
+    def analyze_answer_quality(self, answer: str, chunks: List[Dict[str, Any]], question: str) -> Dict[str, Any]:
+        """
+        Analysiert die Qualität der Antwort im Vergleich zu den Chunks.
+        Gibt drei Scores zurück:
+        - chunk_coverage: Wie viel der Antwort basiert auf den Chunks? (0-100%)
+        - knowledge_gap: Wie viel wurde vom LLM hinzugefügt/aufgefüllt? (0-100%)
+        - hallucination_risk: Risiko von Halluzinationen (nicht in Chunks enthaltene Infos) (0-100%)
+        
+        Args:
+            answer: Die generierte Antwort
+            chunks: Die verwendeten Chunks
+            question: Die ursprüngliche Frage
+            
+        Returns:
+            Dict mit den drei Scores und zusätzlichen Details
+        """
+        if not chunks or not answer:
+            return {
+                'chunk_coverage': 0.0,
+                'knowledge_gap': 100.0,
+                'hallucination_risk': 100.0,
+                'analysis_details': 'Keine Chunks oder Antwort vorhanden'
+            }
+        
+        # Build context from chunks
+        chunk_texts = []
+        for chunk in chunks[:15]:  # Analyze top 15 chunks
+            text = chunk.get('chunk_text', '')
+            speaker = chunk.get('speaker', 'Unknown')
+            chunk_texts.append(f"[{speaker}]: {text}")
+        
+        combined_chunks = "\n\n".join(chunk_texts)
+        
+        # Create analysis prompt
+        analysis_prompt = f"""Du bist ein Experte für die Analyse von KI-generierten Antworten und deren Quelltreue.
+
+FRAGE DES NUTZERS:
+{question}
+
+VERFÜGBARE QUELL-CHUNKS (aus Videos):
+{combined_chunks}
+
+GENERIERTE ANTWORT:
+{answer}
+
+Deine Aufgabe: Analysiere die generierte Antwort im Vergleich zu den verfügbaren Chunks und bewerte drei Aspekte:
+
+1. **Chunk Coverage (0-100%)**: 
+   - Wie viel Prozent der Antwort basiert DIREKT auf Informationen aus den Chunks?
+   - 100% = Alle Informationen sind in den Chunks enthalten
+   - 0% = Keine Information aus den Chunks verwendet
+
+2. **Knowledge Gap / Filled Knowledge (0-100%)**:
+   - Wie viel Prozent der Antwort wurde vom LLM hinzugefügt, um Lücken zu füllen?
+   - Das umfasst: Logische Schlussfolgerungen, Verbindungen zwischen Ideen, Erklärungen, allgemeines Wissen
+   - 100% = Komplett vom LLM aufgefüllt
+   - 0% = Keine Lückenfüllung nötig
+
+3. **Hallucination Risk (0-100%)**:
+   - Wie hoch ist das Risiko, dass die Antwort Informationen enthält, die NICHT in den Chunks sind und potenziell falsch sein könnten?
+   - 100% = Sehr hohes Risiko, viele unbelegte Behauptungen
+   - 0% = Kein Risiko, alles ist belegbar
+
+WICHTIGE UNTERSCHEIDUNG:
+- Knowledge Gap ist nicht unbedingt negativ (z.B. hilfreiche Erklärungen)
+- Hallucination Risk ist problematisch (z.B. erfundene Fakten)
+
+ANALYSIERE NUN:
+Gib eine detaillierte Analyse und bewerte jeden Aspekt mit einem Prozentsatz.
+
+Antworte NUR mit einem JSON-Objekt in folgendem Format:
+{{
+  "chunk_coverage": <0-100>,
+  "knowledge_gap": <0-100>,
+  "hallucination_risk": <0-100>,
+  "analysis_details": "Kurze Erklärung der Bewertung (2-3 Sätze)",
+  "specific_gaps": ["Liste spezifischer Lücken, die gefüllt wurden"],
+  "potential_hallucinations": ["Liste potenzieller Halluzinationen"]
+}}"""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",  # Use GPT-4o for better analysis
+                messages=[
+                    {"role": "system", "content": "Du bist ein Experte für die Analyse von KI-generierten Antworten."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                max_tokens=600,
+                temperature=0.2,  # Low temperature for consistent analysis
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content.strip())
+            
+            logger.info(f"Answer quality analysis completed: Coverage={result.get('chunk_coverage')}%, Gap={result.get('knowledge_gap')}%, Hallucination={result.get('hallucination_risk')}%")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Answer quality analysis failed: {e}")
+            return {
+                'chunk_coverage': 50.0,
+                'knowledge_gap': 50.0,
+                'hallucination_risk': 50.0,
+                'analysis_details': f'Analyse fehlgeschlagen: {str(e)}',
+                'specific_gaps': [],
+                'potential_hallucinations': []
+            }
     
     def _get_timestamp(self) -> str:
         """Get current timestamp"""
