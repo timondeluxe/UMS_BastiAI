@@ -154,7 +154,7 @@ def initialize_session_state():
     if 'debug_mode' not in st.session_state:
         st.session_state.debug_mode = False
     if 'basti_tone' not in st.session_state:
-        st.session_state.basti_tone = True
+        st.session_state.basti_tone = False
     if 'basti_tone_v2' not in st.session_state:
         st.session_state.basti_tone_v2 = True
     if 'mock_data_active' not in st.session_state:
@@ -600,7 +600,7 @@ def main():
         basti_tone = st.checkbox(
             "Basti O-Ton aktivieren", 
             value=st.session_state.basti_tone,
-            help="Aktiviert Bastians charakteristischen Performance-Coach Ton für die Antworten (Standard: aktiviert)"
+            help="Aktiviert Bastians charakteristischen Performance-Coach Ton mit statischem Prompt (veraltet - verwende stattdessen O-Ton-BASTI-AI2)"
         )
         st.session_state.basti_tone = basti_tone
         
