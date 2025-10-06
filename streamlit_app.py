@@ -155,12 +155,14 @@ def initialize_session_state():
         st.session_state.debug_mode = False
     if 'basti_tone' not in st.session_state:
         st.session_state.basti_tone = True
+    if 'basti_tone_v2' not in st.session_state:
+        st.session_state.basti_tone_v2 = False
     if 'mock_data_active' not in st.session_state:
         st.session_state.mock_data_active = False
     if 'clarification_mode' not in st.session_state:
-        st.session_state.clarification_mode = True
+        st.session_state.clarification_mode = False
     if 'iterative_clarification_mode' not in st.session_state:
-        st.session_state.iterative_clarification_mode = False
+        st.session_state.iterative_clarification_mode = True
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -227,6 +229,7 @@ def display_chat_history():
                 if st.session_state.debug_mode and 'debug_info' in message:
                     debug_info = message['debug_info']
                     basti_tone_status = "✅ Aktiviert" if debug_info.get('basti_tone', False) else "❌ Deaktiviert"
+                    basti_tone_v2_status = "✅ Aktiviert" if debug_info.get('basti_tone_v2', False) else "❌ Deaktiviert"
                     clarification_status = "✅ Aktiviert" if debug_info.get('clarification_mode', False) else "❌ Deaktiviert"
                     
                     st.markdown(f"""
@@ -237,6 +240,7 @@ def display_chat_history():
                         • Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s<br>
                         • Modell: {debug_info.get('model', 'N/A')}<br>
                         • Basti O-Ton: {basti_tone_status}<br>
+                        • O-Ton-BASTI-AI2: {basti_tone_v2_status}<br>
                         • Nachfrage-Modus: {clarification_status}
                     </div>
                     """, unsafe_allow_html=True)
@@ -357,7 +361,12 @@ def process_question(question):
             context_text = "\n\n".join([chunk["chunk_text"] for chunk in mock_chunks])
             
             # Generate answer using LLM with mock context
-            if st.session_state.basti_tone:
+            # Note: Mock mode doesn't support dynamic style analysis (no real chunks to analyze)
+            if st.session_state.basti_tone_v2:
+                # For mock mode, we can't do real style analysis, so we use a simplified approach
+                st.warning("⚠️ O-Ton-BASTI-AI2 im Mock-Modus: Verwendet vereinfachten Stil (keine echte Chunk-Analyse möglich)")
+                response = st.session_state.agent._generate_answer(question, context_text)
+            elif st.session_state.basti_tone:
                 basti_system_prompt = """### Tone-of-Voice-Leitfaden „High-Energy Unternehmer-Coach"
 
 Verwende beim Text-Generieren konsequent die folgenden Stilregeln – sie bilden *den* Ton, mit dem die Videos kommunizieren:
@@ -413,7 +422,8 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
                 'sources': mock_sources,
                 'all_selected_chunks': mock_sources,
                 'used_chunk_indices': list(range(len(mock_chunks))),
-                'basti_tone': st.session_state.basti_tone
+                'basti_tone': st.session_state.basti_tone,
+                'basti_tone_v2': st.session_state.basti_tone_v2
             }
 
             return {
@@ -463,12 +473,25 @@ Verwende beim Text-Generieren konsequent die folgenden Stilregeln – sie bilden
 
 Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         
-        # Process question with or without Basti tone
-        if st.session_state.basti_tone:
-            # Use custom system prompt for Basti tone
-            response = st.session_state.agent.ask_question(question, system_prompt=basti_system_prompt)
+        # Process question based on selected tone mode
+        # Priority: O-Ton-BASTI-AI2 > Basti O-Ton > Default
+        if st.session_state.basti_tone_v2:
+            # Use dynamic style mode (O-Ton-BASTI-AI2)
+            logger.info("Using O-Ton-BASTI-AI2 mode (dynamic style)")
+            response = st.session_state.agent.ask_question(
+                question, 
+                use_dynamic_style=True
+            )
+        elif st.session_state.basti_tone:
+            # Use custom system prompt for Basti tone (original mode)
+            logger.info("Using Basti O-Ton mode (static)")
+            response = st.session_state.agent.ask_question(
+                question, 
+                system_prompt=basti_system_prompt
+            )
         else:
             # Use default system prompt
+            logger.info("Using default mode")
             response = st.session_state.agent.ask_question(question)
         
         processing_time = time.time() - start_time
@@ -483,6 +506,7 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             'all_selected_chunks': response.get('all_selected_chunks', []),
             'used_chunk_indices': response.get('used_chunk_indices', []),
             'basti_tone': st.session_state.basti_tone,
+            'basti_tone_v2': st.session_state.basti_tone_v2,
             'clarification_mode': response.get('clarification_mode', False)
         }
         
@@ -580,11 +604,23 @@ def main():
         )
         st.session_state.basti_tone = basti_tone
         
+        # Basti O-Ton V2 toggle (dynamischer Modus)
+        basti_tone_v2 = st.checkbox(
+            "🎭 O-Ton-BASTI-AI2-Modus", 
+            value=st.session_state.basti_tone_v2,
+            help="Dynamischer O-Ton-Modus: Analysiert den Sprachstil aus den Chunks und passt die Antwort entsprechend an"
+        )
+        st.session_state.basti_tone_v2 = basti_tone_v2
+        
+        # Warning if both modes are active
+        if basti_tone and basti_tone_v2:
+            st.warning("⚠️ Beide O-Ton-Modi sind aktiv. O-Ton-BASTI-AI2 hat Priorität.")
+        
         # Nachfrage-Modus toggle
         clarification_mode = st.checkbox(
             "🤔 Nachfrage-Modus aktivieren", 
             value=st.session_state.clarification_mode,
-            help="Aktiviert automatische Nachfragen bei unspezifischen Fragen (Standard: aktiviert)"
+            help="Aktiviert automatische Nachfragen bei unspezifischen Fragen"
         )
         st.session_state.clarification_mode = clarification_mode
         
@@ -596,7 +632,7 @@ def main():
         iterative_clarification_mode = st.checkbox(
             "🔄 Iterativer Nachfrage-Modus", 
             value=st.session_state.iterative_clarification_mode,
-            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist"
+            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist (Standard: aktiviert)"
         )
         st.session_state.iterative_clarification_mode = iterative_clarification_mode
         
@@ -864,7 +900,19 @@ def main():
         - Test-Daten hinzufügen
         - Nachfrage-Modus für spezifische Antworten
         - Iterativer Nachfrage-Modus (Frage für Frage)
+        - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
         """)
+        
+        # O-Ton-BASTI-AI2 Info
+        if st.session_state.basti_tone_v2:
+            st.success("""
+            **🎭 O-Ton-BASTI-AI2-Modus aktiv:**
+            - Analysiert Sprachstil aus zurückgegebenen Chunks
+            - Erstellt dynamischen Stil-Leitfaden mit GPT-4o
+            - Passt Antwort-Stil automatisch an Video-Inhalte an
+            - Mehr Varianz, weniger repetitive Formulierungen
+            - Authentischer O-Ton aus den tatsächlichen Videos
+            """)
         
         # Nachfrage-Modus Info
         if st.session_state.iterative_clarification_mode:
@@ -980,7 +1028,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.3.4 - Vollständige finale Antworten (max_tokens erhöht)
+        Version 2.4.0 - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
     </div>
     """, unsafe_allow_html=True)
 

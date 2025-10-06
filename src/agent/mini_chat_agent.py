@@ -688,10 +688,14 @@ class MiniChatAgent:
         self.clarification_mode_enabled = True  # Automatisch aktiviert
         self.iterative_clarification_mode = False  # One-question-at-a-time mode
         
+        # Cache for analyzed speaking styles (to avoid re-analyzing same chunks)
+        self._style_cache = {}
+        
         logger.info("Initialized MiniChatAgent with ClarificationMode")
     
     def ask_question(self, question: str, video_id: Optional[str] = None, 
-                    context_limit: int = 20, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+                    context_limit: int = 20, system_prompt: Optional[str] = None,
+                    use_dynamic_style: bool = False) -> Dict[str, Any]:
         """
         Ask a question about video content with clarification mode
         
@@ -700,11 +704,12 @@ class MiniChatAgent:
             video_id: Optional video ID to limit search
             context_limit: Number of relevant chunks to include
             system_prompt: Optional custom system prompt
+            use_dynamic_style: If True, analyzes chunks and creates dynamic style-based prompt
             
         Returns:
             Response with answer and sources
         """
-        logger.info(f"Processing question: '{question}'")
+        logger.info(f"Processing question: '{question}' (dynamic_style: {use_dynamic_style})")
         
         try:
             # Search for relevant chunks first
@@ -954,8 +959,16 @@ Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelte
             # Build context for LLM
             context_text = self._build_context(context_chunks)
             
+            # If dynamic style is requested, analyze chunks and generate dynamic prompt
+            final_system_prompt = system_prompt
+            if use_dynamic_style:
+                logger.info("Dynamic style mode active - analyzing speaking style from chunks")
+                style_guide = self._analyze_chunks_speaking_style(context_chunks)
+                final_system_prompt = self._generate_dynamic_system_prompt(style_guide)
+                logger.info("Generated dynamic system prompt based on analyzed style")
+            
             # Generate answer using LLM
-            answer = self._generate_answer(question, context_text, system_prompt)
+            answer = self._generate_answer(question, context_text, final_system_prompt)
             
             # Calculate confidence based on chunk relevance
             confidence = self._calculate_confidence(context_chunks, question)
@@ -1089,6 +1102,117 @@ Antworte basierend auf dem bereitgestellten Kontext. Wenn die Antwort nicht im K
         """Get current timestamp"""
         from datetime import datetime
         return datetime.now().isoformat()
+    
+    def _analyze_chunks_speaking_style(self, chunks: List[Dict[str, Any]]) -> str:
+        """
+        Analysiert die Sprachart in den Chunks und gibt einen Stil-Leitfaden zurück.
+        Diese Methode wird für den O-Ton-BASTI-AI2-Modus verwendet.
+        
+        Args:
+            chunks: Liste der relevanten Chunks
+            
+        Returns:
+            String mit dem analysierten Stil-Leitfaden
+        """
+        if not chunks:
+            return "Neutraler, professioneller Ton."
+        
+        # Build text from chunks for analysis
+        chunk_texts = []
+        for chunk in chunks[:10]:  # Analyze top 10 chunks
+            text = chunk.get('chunk_text', '')
+            speaker = chunk.get('speaker', 'Unknown')
+            chunk_texts.append(f"[{speaker}]: {text}")
+        
+        combined_text = "\n\n".join(chunk_texts)
+        
+        # Create cache key
+        cache_key = hash(combined_text[:500])  # Use first 500 chars for cache key
+        
+        # Check cache
+        if cache_key in self._style_cache:
+            logger.info("Using cached speaking style analysis")
+            return self._style_cache[cache_key]
+        
+        # Analyze speaking style using GPT-4o
+        analysis_prompt = f"""Du bist ein Experte für Sprach- und Stilanalyse. Analysiere die folgenden Textausschnitte und erstelle einen präzisen Stil-Leitfaden, der die charakteristische Sprechart erfasst.
+
+TEXTAUSSCHNITTE:
+{combined_text}
+
+Deine Aufgabe:
+Analysiere die Sprachart in diesen Texten und erstelle einen detaillierten Stil-Leitfaden, der folgende Aspekte beschreibt:
+
+1. **Ansprache & Tonalität**: Wie wird der Leser/Zuhörer angesprochen? Förmlich oder informell? Motivierend oder sachlich?
+
+2. **Satzstruktur & Rhythmus**: Wie sind die Sätze aufgebaut? Kurz und knackig oder ausführlich? Welche rhetorischen Mittel werden verwendet?
+
+3. **Wortwahl & Vokabular**: Welche Art von Wörtern wird verwendet? Fachbegriffe, Umgangssprache, Metaphern? Welche wiederkehrenden Ausdrücke gibt es?
+
+4. **Emotionale Färbung**: Welche Emotionen werden transportiert? Begeisterung, Dringlichkeit, Ruhe, Aggression?
+
+5. **Typische Einleitungen & Übergänge**: Wie beginnen Aussagen? Wie werden Gedanken verknüpft?
+
+6. **Besondere Stilmittel**: Gibt es charakteristische Ausrufe, Zwischenrufe, Betonungen oder Formulierungen?
+
+WICHTIG:
+- Beschreibe den TATSÄCHLICHEN Stil aus den Texten, nicht einen idealen Stil
+- Sei spezifisch und konkret
+- Nenne Beispiele aus den Texten
+- Der Leitfaden soll später verwendet werden, um in EXAKT diesem Stil zu antworten
+
+Antworte mit einem detaillierten Stil-Leitfaden, der als System-Prompt verwendet werden kann."""
+
+        try:
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o",  # Use GPT-4o for better analysis
+                messages=[
+                    {"role": "system", "content": "Du bist ein Experte für Sprach- und Stilanalyse."},
+                    {"role": "user", "content": analysis_prompt}
+                ],
+                max_tokens=800,
+                temperature=0.3  # Lower temperature for consistent analysis
+            )
+            
+            style_guide = response.choices[0].message.content.strip()
+            
+            # Cache the result
+            self._style_cache[cache_key] = style_guide
+            
+            logger.info(f"Analyzed speaking style from {len(chunks)} chunks")
+            return style_guide
+            
+        except Exception as e:
+            logger.error(f"Speaking style analysis failed: {e}")
+            return "Verwende einen natürlichen, direkten Ton wie in den Video-Inhalten."
+    
+    def _generate_dynamic_system_prompt(self, style_guide: str) -> str:
+        """
+        Generiert einen dynamischen System-Prompt basierend auf dem analysierten Stil-Leitfaden.
+        
+        Args:
+            style_guide: Der analysierte Stil-Leitfaden
+            
+        Returns:
+            String mit dem dynamischen System-Prompt
+        """
+        dynamic_prompt = f"""Du bist ein Video-Content-Assistent, der Fragen basierend auf Video-Inhalten beantwortet.
+
+**WICHTIG: STIL-ANPASSUNG**
+Du musst deine Antworten EXAKT im folgenden Stil formulieren, der aus den Video-Inhalten analysiert wurde:
+
+{style_guide}
+
+**DEINE AUFGABE:**
+1. Beantworte die Frage des Nutzers basierend auf den bereitgestellten Video-Inhalten
+2. Verwende dabei GENAU den oben beschriebenen Stil
+3. Imitiere die Sprechart, Tonalität, Wortwahl und Satzstruktur aus den Videos
+4. Sei authentisch und verwende die typischen Ausdrücke und Formulierungen
+5. Wenn die Antwort nicht in den Video-Inhalten gefunden werden kann, sage das ehrlich (aber im gleichen Stil)
+
+Antworte jetzt auf die Frage des Nutzers in diesem charakteristischen Stil."""
+
+        return dynamic_prompt
     
     def get_conversation_history(self) -> List[Dict[str, Any]]:
         """Get conversation history"""

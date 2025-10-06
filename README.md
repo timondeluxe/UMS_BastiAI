@@ -5,6 +5,7 @@ Ein intelligenter Video Chat Agent mit Bastians charakteristischem Performance-C
 ## 🚀 Features
 
 - **Basti O-Ton**: Automatisch aktivierter charakteristischer Performance-Coach Stil
+- **O-Ton-BASTI-AI2**: Dynamischer Modus, der Sprachstil aus Video-Chunks analysiert und adaptiert
 - **Video Content Q&A**: Intelligente Beantwortung von Fragen zu Video-Inhalten
 - **Confidence Scoring**: Vertrauens-Score für jede Antwort
 - **Debug Mode**: Detaillierte Informationen über Quellen und Verarbeitung
@@ -69,12 +70,24 @@ AGENT_TOP_K=5
 AGENT_SIMILARITY_THRESHOLD=0.7
 ```
 
-## 🎯 Basti O-Ton
+## 🎯 O-Ton Modi
+
+### Basti O-Ton (Standard)
 
 Der Basti O-Ton ist standardmäßig aktiviert und verwendet einen charakteristischen Performance-Coach Stil:
 
 - **Direkte "du" Ansprache**
 - **Kurze, prägnante Sätze**
+
+### O-Ton-BASTI-AI2 (Dynamischer Modus)
+
+Der neue dynamische Modus analysiert den Sprachstil direkt aus den Video-Chunks:
+
+- **Stil-Analyse**: GPT-4o analysiert die Sprechart in den zurückgegebenen Chunks
+- **Dynamischer Prompt**: System-Prompt wird automatisch an den analysierten Stil angepasst
+- **Authentischer O-Ton**: Verwendet die tatsächliche Sprechart aus den Videos
+- **Mehr Varianz**: Keine repetitiven Formulierungen wie "Boom!" in jeder Antwort
+- **Kontextabhängig**: Passt sich je nach Thema und Video-Inhalt an
 - **Motivierende Sprache**
 - **Business-Jargon und Psycho-Vokabular**
 - **Emotionale Trigger und Handlungsaufforderungen**
