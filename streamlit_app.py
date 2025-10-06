@@ -153,6 +153,8 @@ def initialize_session_state():
         st.session_state.agent = None
     if 'debug_mode' not in st.session_state:
         st.session_state.debug_mode = False
+    if 'debug_mode_ai' not in st.session_state:
+        st.session_state.debug_mode_ai = False
     if 'basti_tone' not in st.session_state:
         st.session_state.basti_tone = False
     if 'basti_tone_v2' not in st.session_state:
@@ -225,8 +227,8 @@ def display_chat_history():
                 """, unsafe_allow_html=True)
                 st.caption(f"🕒 {message['timestamp']}")
                 
-                # Show quality scores (only in debug mode)
-                if st.session_state.debug_mode and 'quality_scores' in message and message.get('quality_scores'):
+                # Show quality scores (only in AI debug mode)
+                if st.session_state.debug_mode_ai and 'quality_scores' in message and message.get('quality_scores'):
                     quality_scores = message['quality_scores']
                     
                     # Get scores with default values if analysis is pending
@@ -566,8 +568,8 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
                 'basti_tone_v2': st.session_state.basti_tone_v2
             }
 
-            # Only perform quality analysis if debug mode is active AND chunks were used
-            needs_analysis = st.session_state.debug_mode and len(mock_chunks) > 0
+            # Only perform quality analysis if AI debug mode is active AND chunks were used
+            needs_analysis = st.session_state.debug_mode_ai and len(mock_chunks) > 0
             
             return {
                 'answer': response,
@@ -626,12 +628,14 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         
         # Process question based on selected tone mode
         # Priority: O-Ton-BASTI-AI2 > Basti O-Ton > Default
+        # Pass use_dynamic_style to agent so iterative mode can also use it
         if st.session_state.basti_tone_v2:
             # Use dynamic style mode (O-Ton-BASTI-AI2)
             logger.info("Using O-Ton-BASTI-AI2 mode (dynamic style)")
             response = st.session_state.agent.ask_question(
                 question, 
-                use_dynamic_style=True
+                use_dynamic_style=True,
+                force_dynamic_style=True  # Force for iterative final answer too
             )
         elif st.session_state.basti_tone:
             # Use custom system prompt for Basti tone (original mode)
@@ -661,8 +665,8 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             'clarification_mode': response.get('clarification_mode', False)
         }
         
-        # Only perform quality analysis if debug mode is active AND chunks were used
-        needs_analysis = (st.session_state.debug_mode and 
+        # Only perform quality analysis if AI debug mode is active AND chunks were used
+        needs_analysis = (st.session_state.debug_mode_ai and 
                          response.get('context_chunks_used', 0) > 0)
         
         return {
@@ -768,6 +772,14 @@ def main():
             help="Zeigt zusätzliche Informationen wie Quellen und Verarbeitungszeiten"
         )
         st.session_state.debug_mode = debug_mode
+        
+        # Debug mode with AI functions toggle
+        debug_mode_ai = st.checkbox(
+            "🤖 Debug-Modus mit AI-Funktionen", 
+            value=st.session_state.debug_mode_ai,
+            help="⚠️ VORSICHT: Sehr langsam! Aktiviert detaillierte Qualitätsanalyse mit Chunk Coverage, Knowledge Gap und Hallucination Risk"
+        )
+        st.session_state.debug_mode_ai = debug_mode_ai
         
         # Basti O-Ton toggle
         basti_tone = st.checkbox(
@@ -1069,12 +1081,41 @@ def main():
         - Fragen zu Video-Inhalten stellen
         - Vertrauens-Score für Antworten
         - Debug-Modus für detaillierte Infos
+        - Debug-Modus mit AI (sehr langsam!)
         - Chat-Verlauf
         - Test-Daten hinzufügen
         - Nachfrage-Modus für spezifische Antworten
         - Iterativer Nachfrage-Modus (Frage für Frage)
         - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
         """)
+        
+        # Debug mode explanation
+        if st.session_state.debug_mode or st.session_state.debug_mode_ai:
+            st.divider()
+            st.subheader("🔧 Debug-Modi Erklärung")
+            
+            if st.session_state.debug_mode:
+                st.success("""
+                **✅ Debug-Modus aktiv:**
+                - Zeigt verwendete und gefundene Chunks
+                - Verarbeitungszeit wird angezeigt
+                - Modell-Informationen sichtbar
+                - Quellen können angezeigt werden
+                - ⚡ Schnell (keine zusätzlichen AI-Calls)
+                """)
+            
+            if st.session_state.debug_mode_ai:
+                st.warning("""
+                **🤖 Debug-Modus mit AI-Funktionen aktiv:**
+                - ⚠️ VORSICHT: Sehr langsam!
+                - 📊 Chunk Coverage Analyse (GPT-4o)
+                - 🔧 Knowledge Gap Bewertung
+                - ⚠️ Hallucination Risk Prüfung
+                - 🔍 Detailliertes Reasoning (2000 tokens)
+                - Sentence-by-sentence Analyse
+                - Konkrete Beispiele und Zitate
+                """)
+        
         
         # O-Ton-BASTI-AI2 Info
         if st.session_state.basti_tone_v2:

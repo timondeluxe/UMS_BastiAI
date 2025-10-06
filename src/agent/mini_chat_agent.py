@@ -653,7 +653,7 @@ class MiniChatAgent:
     
     def ask_question(self, question: str, video_id: Optional[str] = None, 
                     context_limit: int = 20, system_prompt: Optional[str] = None,
-                    use_dynamic_style: bool = False) -> Dict[str, Any]:
+                    use_dynamic_style: bool = False, force_dynamic_style: bool = False) -> Dict[str, Any]:
         """
         Ask a question about video content with clarification mode
         
@@ -729,15 +729,20 @@ Verfügbare Informationen aus Videos:
 
 Gib eine vollständige, maßgeschneiderte Antwort basierend auf allen gesammelten Informationen. Sei spezifisch, konkret und hilfreich."""
 
-                    if system_prompt:
-                        system_content = system_prompt
-                    else:
-                        system_content = "Du bist ein hilfreicher Experte, der umfassende, maßgeschneiderte Lösungen gibt."
+                    # Use dynamic style if O-Ton-BASTI-AI2 is active
+                    final_system_prompt = system_prompt
+                    if use_dynamic_style or force_dynamic_style:
+                        logger.info("Using dynamic style (O-Ton-BASTI-AI2) for iterative final answer")
+                        style_guide = self._analyze_chunks_speaking_style(context_chunks)
+                        final_system_prompt = self._generate_dynamic_system_prompt(style_guide)
+                    
+                    if not final_system_prompt:
+                        final_system_prompt = "Du bist ein hilfreicher Experte, der umfassende, maßgeschneiderte Lösungen gibt."
                     
                     response_obj = self.openai_client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": system_content},
+                            {"role": "system", "content": final_system_prompt},
                             {"role": "user", "content": final_prompt}
                         ],
                         max_tokens=1200,  # Erhöht für vollständige Antworten inkl. Bonus-Tipps
