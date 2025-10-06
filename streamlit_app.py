@@ -156,7 +156,7 @@ def initialize_session_state():
     if 'basti_tone' not in st.session_state:
         st.session_state.basti_tone = True
     if 'basti_tone_v2' not in st.session_state:
-        st.session_state.basti_tone_v2 = False
+        st.session_state.basti_tone_v2 = True
     if 'mock_data_active' not in st.session_state:
         st.session_state.mock_data_active = False
     if 'clarification_mode' not in st.session_state:
@@ -608,7 +608,7 @@ def main():
         basti_tone_v2 = st.checkbox(
             "🎭 O-Ton-BASTI-AI2-Modus", 
             value=st.session_state.basti_tone_v2,
-            help="Dynamischer O-Ton-Modus: Analysiert den Sprachstil aus den Chunks und passt die Antwort entsprechend an"
+            help="Dynamischer O-Ton-Modus: Analysiert den Sprachstil aus den Chunks und passt die Antwort entsprechend an (Standard: aktiviert)"
         )
         st.session_state.basti_tone_v2 = basti_tone_v2
         
