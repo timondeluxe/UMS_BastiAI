@@ -1218,33 +1218,62 @@ WICHTIG für sentence_analysis:
 - "added": Vom LLM hinzugefügte Verbindungen/Erklärungen (kann hilfreich sein!)"""
 
         try:
+            logger.info(f"Starting quality analysis for answer with {len(chunks)} chunks")
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o",  # Use GPT-4o for high-quality analysis
                 messages=[
                     {"role": "system", "content": "Du bist ein forensischer Experte für KI-Antwortanalyse. Sei extrem detailliert und präzise."},
                     {"role": "user", "content": analysis_prompt}
                 ],
-                max_tokens=2000,  # Deutlich erhöht für detaillierte Analyse
+                max_tokens=2500,  # Erhöht für sentence_analysis array
                 temperature=0.1,  # Very low temperature for consistent, objective analysis
                 response_format={"type": "json_object"}
             )
             
-            result = json.loads(response.choices[0].message.content.strip())
+            response_text = response.choices[0].message.content.strip()
+            logger.info(f"Received analysis response, parsing JSON...")
             
-            logger.info(f"Detailed quality analysis completed: Coverage={result.get('chunk_coverage')}%, Gap={result.get('knowledge_gap')}%, Hallucination={result.get('hallucination_risk')}%")
+            result = json.loads(response_text)
+            
+            # Validate required fields
+            if 'chunk_coverage' not in result or 'knowledge_gap' not in result or 'hallucination_risk' not in result:
+                logger.error(f"Missing required fields in analysis result: {result.keys()}")
+                raise ValueError("Missing required fields in analysis result")
+            
+            logger.info(f"Quality analysis completed: Coverage={result.get('chunk_coverage')}%, Gap={result.get('knowledge_gap')}%, Hallucination={result.get('hallucination_risk')}%, Sentences={len(result.get('sentence_analysis', []))} analyzed")
             
             return result
             
-        except Exception as e:
-            logger.error(f"Answer quality analysis failed: {e}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode failed in quality analysis: {e}")
+            logger.error(f"Response was: {response_text[:500] if 'response_text' in locals() else 'No response'}")
             return {
                 'chunk_coverage': 50.0,
                 'knowledge_gap': 50.0,
                 'hallucination_risk': 50.0,
-                'analysis_details': f'Analyse fehlgeschlagen: {str(e)}',
-                'detailed_reasoning': 'Die Analyse konnte aufgrund eines technischen Fehlers nicht durchgeführt werden.',
+                'analysis_details': f'JSON-Parsing fehlgeschlagen: {str(e)}',
+                'detailed_reasoning': f'Die Analyse-Antwort konnte nicht als JSON geparst werden. Fehler: {str(e)}',
                 'specific_gaps': [],
                 'potential_hallucinations': [],
+                'sentence_analysis': [],
+                'coverage_breakdown': {'total_sentences': 0, 'sourced_sentences': 0, 'added_sentences': 0}
+            }
+        except Exception as e:
+            logger.error(f"Answer quality analysis failed with error: {e}", exc_info=True)
+            import traceback
+            error_trace = traceback.format_exc()
+            logger.error(f"Full traceback: {error_trace}")
+            
+            return {
+                'chunk_coverage': 50.0,
+                'knowledge_gap': 50.0,
+                'hallucination_risk': 50.0,
+                'analysis_details': f'Analyse fehlgeschlagen: {type(e).__name__}: {str(e)}',
+                'detailed_reasoning': f'Die Analyse konnte nicht durchgeführt werden. Fehlertyp: {type(e).__name__}, Details: {str(e)}',
+                'specific_gaps': [],
+                'potential_hallucinations': [],
+                'sentence_analysis': [],
                 'coverage_breakdown': {'total_sentences': 0, 'sourced_sentences': 0, 'added_sentences': 0}
             }
     
