@@ -338,8 +338,10 @@ def display_chat_history():
                                     # Get chunk information for full chunk viewer
                                     source_chunk_name = analysis.get('source_chunk', None)
                                     chunk_quote = analysis.get('chunk_quote', None)
+                                    explanation = analysis.get('explanation', 'Keine Erklärung verfügbar')
+                                    answer_statement = analysis.get('answer_statement', 'N/A')
                                     
-                                    # Display analysis box with direct chunk comparison
+                                    # Build chunk display section
                                     chunk_display = ""
                                     if chunk_quote and source_chunk_name:
                                         chunk_display = f"""
@@ -349,6 +351,7 @@ def display_chat_history():
                                         </div>
                                         """
                                     
+                                    # Display complete analysis box with all content
                                     st.markdown(f"""
                                     <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
                                         <div style="font-weight: bold; color: #000000; margin-bottom: 10px;">
@@ -356,11 +359,11 @@ def display_chat_history():
                                         </div>
                                         <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;">
                                             <strong style="color: #000000;">📝 Aussage in der Antwort:</strong><br>
-                                            <em style="color: #000000;">{analysis.get('answer_statement', 'N/A')}</em>
+                                            <em style="color: #000000;">"{answer_statement}"</em>
                                         </div>
                                         {chunk_display}
                                         <div style="margin-top: 10px; color: #000000; font-size: 0.9em;">
-                                            <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
+                                            <strong style="color: #000000;">💡 Erklärung:</strong> {explanation}
                                         </div>
                                     </div>
                                     """, unsafe_allow_html=True)
