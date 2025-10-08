@@ -335,38 +335,43 @@ def display_chat_history():
                                         status_text = "Vom LLM hinzugefügt"
                                         border_color = "#17a2b8"
                                     
-                                    # Get chunk information for full chunk viewer
+                                    # Get data from analysis
                                     source_chunk_name = analysis.get('source_chunk', None)
                                     chunk_quote = analysis.get('chunk_quote', None)
                                     explanation = analysis.get('explanation', 'Keine Erklärung verfügbar')
                                     answer_statement = analysis.get('answer_statement', 'N/A')
                                     
+                                    # Escape HTML in text content to prevent rendering issues
+                                    import html
+                                    answer_statement_safe = html.escape(answer_statement)
+                                    explanation_safe = html.escape(explanation)
+                                    
                                     # Build chunk display section
                                     chunk_display = ""
                                     if chunk_quote and source_chunk_name:
-                                        chunk_display = f"""
-                                        <div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;'>
-                                            <strong style='color: #000000;'>📚 Quelle ({source_chunk_name}):</strong><br>
-                                            <em style='color: #000000;'>"{chunk_quote}"</em>
-                                        </div>
-                                        """
+                                        chunk_quote_safe = html.escape(chunk_quote)
+                                        source_chunk_safe = html.escape(source_chunk_name)
+                                        chunk_display = f"""<div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;'>
+                                            <strong style='color: #000000;'>📚 Quelle ({source_chunk_safe}):</strong><br>
+                                            <em style='color: #000000;'>"{chunk_quote_safe}"</em>
+                                        </div>"""
                                     
-                                    # Display complete analysis box with all content
-                                    st.markdown(f"""
-                                    <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
+                                    # Display complete analysis box with all content in one HTML block
+                                    html_content = f"""<div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
                                         <div style="font-weight: bold; color: #000000; margin-bottom: 10px;">
                                             {icon} Analyse #{idx} - {status_text}
                                         </div>
                                         <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;">
                                             <strong style="color: #000000;">📝 Aussage in der Antwort:</strong><br>
-                                            <em style="color: #000000;">"{answer_statement}"</em>
+                                            <em style="color: #000000;">"{answer_statement_safe}"</em>
                                         </div>
                                         {chunk_display}
                                         <div style="margin-top: 10px; color: #000000; font-size: 0.9em;">
-                                            <strong style="color: #000000;">💡 Erklärung:</strong> {explanation}
+                                            <strong style="color: #000000;">💡 Erklärung:</strong> {explanation_safe}
                                         </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                    </div>"""
+                                    
+                                    st.markdown(html_content, unsafe_allow_html=True)
                                     
                                     # Show full chunk in expander if available
                                     if chunk_quote and source_chunk_name:
