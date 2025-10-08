@@ -306,6 +306,10 @@ def display_chat_history():
                                 st.markdown("### 🔍 Satz-für-Satz Analyse")
                                 st.markdown("*Prüfung jeder Aussage: Stammt sie aus den Chunks oder wurde sie hinzugefügt?*")
                                 
+                                # Get all sources/chunks for reference
+                                debug_info = message.get('debug_info', {})
+                                all_chunks = debug_info.get('all_selected_chunks', [])
+                                
                                 for idx, analysis in enumerate(quality_scores.get('sentence_analysis', []), 1):
                                     status = analysis.get('status', 'unknown')
                                     
@@ -331,7 +335,7 @@ def display_chat_history():
                                         status_text = "Vom LLM hinzugefügt"
                                         border_color = "#17a2b8"
                                     
-                                    # Create visual box for each sentence
+                                    # Display analysis box
                                     st.markdown(f"""
                                     <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
                                         <div style="font-weight: bold; color: #000000; margin-bottom: 10px;">
@@ -339,12 +343,47 @@ def display_chat_history():
                                         </div>
                                         <div style="background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;">
                                             <strong style="color: #000000;">📝 Aussage in der Antwort:</strong><br>
-                                            <em style="color: #000000;">"{analysis.get('answer_statement', 'N/A')}"</em>
+                                            <em style="color: #000000;">{analysis.get('answer_statement', 'N/A')}</em>
                                         </div>
-                                        {"<div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;'><strong style='color: #000000;'>📚 Quelle (" + analysis.get('source_chunk', 'N/A') + "):</strong><br><em style='color: #000000;'>\"" + analysis.get('chunk_quote', 'N/A') + "\"</em></div>" if analysis.get('chunk_quote') else ""}
-                                        <div style="margin-top: 10px; color: #000000; font-size: 0.9em;">
-                                            <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
-                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Show chunk quote and full chunk in expander if available
+                                    if analysis.get('chunk_quote') and analysis.get('source_chunk'):
+                                        source_chunk_name = analysis.get('source_chunk', 'N/A')
+                                        chunk_quote = analysis.get('chunk_quote', 'N/A')
+                                        
+                                        # Try to extract chunk number (e.g., "CHUNK 3" -> 3)
+                                        try:
+                                            chunk_num = int(source_chunk_name.replace('CHUNK', '').strip()) - 1
+                                            if 0 <= chunk_num < len(all_chunks):
+                                                full_chunk = all_chunks[chunk_num]
+                                                full_chunk_text = full_chunk.get('text', 'Chunk nicht verfügbar')
+                                                chunk_speaker = full_chunk.get('speaker', 'Unknown')
+                                                chunk_timestamp = full_chunk.get('timestamp', 0)
+                                                
+                                                with st.expander(f"📚 Quelle ({source_chunk_name}) - Zitat anzeigen"):
+                                                    st.markdown(f"**Relevantes Zitat:**")
+                                                    st.info(chunk_quote)
+                                                    
+                                                    st.markdown(f"**Kompletter Chunk:**")
+                                                    st.markdown(f"*[{format_timestamp(chunk_timestamp)}] {chunk_speaker}*")
+                                                    st.text_area(
+                                                        "Vollständiger Chunk-Text",
+                                                        value=full_chunk_text,
+                                                        height=150,
+                                                        key=f"chunk_full_{i}_{idx}",
+                                                        label_visibility="collapsed"
+                                                    )
+                                            else:
+                                                st.caption(f"📚 Quelle ({source_chunk_name}): {chunk_quote}")
+                                        except (ValueError, IndexError):
+                                            st.caption(f"📚 Quelle ({source_chunk_name}): {chunk_quote}")
+                                    
+                                    # Show explanation
+                                    st.markdown(f"""
+                                    <div style="margin-top: 10px; margin-bottom: 20px; color: #000000; font-size: 0.9em; padding-left: 15px;">
+                                        <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
                                     </div>
                                     """, unsafe_allow_html=True)
                                 
@@ -620,6 +659,7 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
             }
 
             # Only perform quality analysis if AI debug mode is active AND chunks were used
+            # For mock mode, always allow analysis (no iterative mode check needed)
             needs_analysis = st.session_state.debug_mode_ai and len(mock_chunks) > 0
             
             return {
@@ -724,8 +764,15 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         }
         
         # Only perform quality analysis if AI debug mode is active AND chunks were used
+        # AND it's not a clarification question (only analyze final answers)
+        is_clarification = response.get('clarification_mode', False)
+        is_final_answer = response.get('final_answer', False)
+        is_iterative = response.get('iterative_mode', False)
+        
+        # Only analyze if: AI debug mode + chunks used + (not iterative OR is final answer)
         needs_analysis = (st.session_state.debug_mode_ai and 
-                         response.get('context_chunks_used', 0) > 0)
+                         response.get('context_chunks_used', 0) > 0 and
+                         (not is_iterative or is_final_answer))
         
         return {
             'answer': response['answer'],
