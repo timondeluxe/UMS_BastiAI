@@ -166,7 +166,7 @@ def initialize_session_state():
     if 'iterative_clarification_mode' not in st.session_state:
         st.session_state.iterative_clarification_mode = True
     if 'creativity_level' not in st.session_state:
-        st.session_state.creativity_level = 0.7  # Default: Balanced (current standard)
+        st.session_state.creativity_level = 0.0  # Default: Maximal quelltreu
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -335,7 +335,20 @@ def display_chat_history():
                                         status_text = "Vom LLM hinzugefügt"
                                         border_color = "#17a2b8"
                                     
-                                    # Display analysis box
+                                    # Get chunk information for full chunk viewer
+                                    source_chunk_name = analysis.get('source_chunk', None)
+                                    chunk_quote = analysis.get('chunk_quote', None)
+                                    
+                                    # Display analysis box with direct chunk comparison
+                                    chunk_display = ""
+                                    if chunk_quote and source_chunk_name:
+                                        chunk_display = f"""
+                                        <div style='background-color: white; padding: 10px; border-radius: 3px; margin: 10px 0; color: #000000;'>
+                                            <strong style='color: #000000;'>📚 Quelle ({source_chunk_name}):</strong><br>
+                                            <em style='color: #000000;'>"{chunk_quote}"</em>
+                                        </div>
+                                        """
+                                    
                                     st.markdown(f"""
                                     <div style="background-color: {bg_color}; border-left: 4px solid {border_color}; padding: 15px; margin: 15px 0; border-radius: 5px; color: #000000;">
                                         <div style="font-weight: bold; color: #000000; margin-bottom: 10px;">
@@ -345,15 +358,15 @@ def display_chat_history():
                                             <strong style="color: #000000;">📝 Aussage in der Antwort:</strong><br>
                                             <em style="color: #000000;">{analysis.get('answer_statement', 'N/A')}</em>
                                         </div>
+                                        {chunk_display}
+                                        <div style="margin-top: 10px; color: #000000; font-size: 0.9em;">
+                                            <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
+                                        </div>
                                     </div>
                                     """, unsafe_allow_html=True)
                                     
-                                    # Show chunk quote and full chunk in expander if available
-                                    if analysis.get('chunk_quote') and analysis.get('source_chunk'):
-                                        source_chunk_name = analysis.get('source_chunk', 'N/A')
-                                        chunk_quote = analysis.get('chunk_quote', 'N/A')
-                                        
-                                        # Try to extract chunk number (e.g., "CHUNK 3" -> 3)
+                                    # Show full chunk in expander if available
+                                    if chunk_quote and source_chunk_name:
                                         try:
                                             chunk_num = int(source_chunk_name.replace('CHUNK', '').strip()) - 1
                                             if 0 <= chunk_num < len(all_chunks):
@@ -362,12 +375,8 @@ def display_chat_history():
                                                 chunk_speaker = full_chunk.get('speaker', 'Unknown')
                                                 chunk_timestamp = full_chunk.get('timestamp', 0)
                                                 
-                                                with st.expander(f"📚 Quelle ({source_chunk_name}) - Zitat anzeigen"):
-                                                    st.markdown(f"**Relevantes Zitat:**")
-                                                    st.info(chunk_quote)
-                                                    
-                                                    st.markdown(f"**Kompletter Chunk:**")
-                                                    st.markdown(f"*[{format_timestamp(chunk_timestamp)}] {chunk_speaker}*")
+                                                with st.expander(f"🔍 Kompletten {source_chunk_name} anzeigen"):
+                                                    st.markdown(f"**[{format_timestamp(chunk_timestamp)}] {chunk_speaker}**")
                                                     st.text_area(
                                                         "Vollständiger Chunk-Text",
                                                         value=full_chunk_text,
@@ -375,17 +384,8 @@ def display_chat_history():
                                                         key=f"chunk_full_{i}_{idx}",
                                                         label_visibility="collapsed"
                                                     )
-                                            else:
-                                                st.caption(f"📚 Quelle ({source_chunk_name}): {chunk_quote}")
-                                        except (ValueError, IndexError):
-                                            st.caption(f"📚 Quelle ({source_chunk_name}): {chunk_quote}")
-                                    
-                                    # Show explanation
-                                    st.markdown(f"""
-                                    <div style="margin-top: 10px; margin-bottom: 20px; color: #000000; font-size: 0.9em; padding-left: 15px;">
-                                        <strong style="color: #000000;">💡 Erklärung:</strong> {analysis.get('explanation', 'Keine Erklärung verfügbar')}
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                        except (ValueError, IndexError) as e:
+                                            logger.warning(f"Could not parse chunk number from {source_chunk_name}: {e}")
                                 
                                 st.markdown("---")
                             
@@ -899,12 +899,12 @@ def main():
             help="""
             Steuert wie eng sich die Antworten an den Video-Chunks orientieren:
             
-            • 0.0 = Maximal restriktiv
+            • 0.0 = Maximal restriktiv (Standard)
               - Nur Informationen aus Chunks
               - Keine Ergänzungen oder Interpretationen
               - Reine Zusammenfassung
               
-            • 0.5 = Ausgewogen (empfohlen)
+            • 0.5 = Ausgewogen
               - Hauptsächlich Chunk-Informationen
               - Leichte Erklärungen und Verbindungen
               
