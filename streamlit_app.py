@@ -1435,7 +1435,7 @@ def main():
         
         st.divider()
         
-        # Automatic iterative test
+        # Automatic iterative test - Button only in sidebar
         st.subheader("🤖 Automatischer Test")
         if st.button("🔄 Voll automatischer iterativer Test", use_container_width=True):
             if st.session_state.agent:
@@ -1448,145 +1448,9 @@ def main():
             else:
                 st.error("Agent nicht initialisiert")
         
-        # Show test results if available
+        # Just show a note in sidebar if test results are available
         if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
-            with st.expander("📊 Test-Ergebnisse anzeigen", expanded=True):
-                test_result = st.session_state.test_result
-                
-                st.markdown("### 🎯 Test-Zusammenfassung")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Ursprüngliche Frage", test_result['initial_question'][:30] + "...")
-                with col2:
-                    st.metric("Anzahl Nachfragen", test_result['num_iterations'])
-                with col3:
-                    st.metric("Test-Dauer", f"{test_result['total_duration']:.2f}s")
-                
-                st.markdown("### 🔄 Iterationsverlauf")
-                for i, iteration in enumerate(test_result['iterations'], 1):
-                    with st.container():
-                        st.markdown(f"**Iteration {i}:**")
-                        col1, col2 = st.columns([1, 1])
-                        with col1:
-                            st.info(f"🤖 **Bot fragt:** {iteration['bot_question']}")
-                        with col2:
-                            st.success(f"👤 **Auto-Antwort:** {iteration['auto_answer']}")
-                        
-                        # Show metrics
-                        metric_col1, metric_col2 = st.columns(2)
-                        with metric_col1:
-                            st.caption(f"⏱️ Dauer: {iteration['duration']:.2f}s")
-                        with metric_col2:
-                            st.caption(f"📊 Confidence: {iteration.get('confidence', 0.0):.1%}")
-                        
-                        st.markdown("---")
-                
-                st.markdown("### ✅ Finale Antwort")
-                st.success(test_result['final_answer'])
-                
-                # Show metrics for final answer
-                metric_col1, metric_col2, metric_col3 = st.columns(3)
-                with metric_col1:
-                    st.metric("Confidence", f"{test_result['final_confidence']:.1%}")
-                with metric_col2:
-                    if 'context_chunks_used' in test_result:
-                        st.metric("Chunks verwendet", test_result['context_chunks_used'])
-                with metric_col3:
-                    if 'total_chunks_found' in test_result:
-                        st.metric("Chunks gefunden", test_result['total_chunks_found'])
-                
-                # Show debug info if available
-                if 'debug_info' in test_result and test_result['debug_info']:
-                    with st.expander("🔍 Debug-Informationen", expanded=False):
-                        debug_info = test_result['debug_info']
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write("**Verarbeitungsdetails:**")
-                            st.write(f"• Modell: {debug_info.get('model', 'N/A')}")
-                            st.write(f"• Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s")
-                            st.write(f"• Chunks verwendet: {debug_info.get('chunks_used', 'N/A')}")
-                            st.write(f"• Chunks gefunden: {debug_info.get('total_chunks', 'N/A')}")
-                        
-                        with col2:
-                            st.write("**Modi:**")
-                            basti_tone = "✅ Aktiv" if debug_info.get('basti_tone', False) else "❌ Inaktiv"
-                            basti_tone_v2 = "✅ Aktiv" if debug_info.get('basti_tone_v2', False) else "❌ Inaktiv"
-                            clarification = "✅ Aktiv" if debug_info.get('clarification_mode', False) else "❌ Inaktiv"
-                            st.write(f"• Basti O-Ton: {basti_tone}")
-                            st.write(f"• O-Ton-BASTI-AI2: {basti_tone_v2}")
-                            st.write(f"• Nachfrage-Modus: {clarification}")
-                        
-                        # Show sources
-                        if 'sources' in debug_info and debug_info['sources']:
-                            st.markdown("**📚 Verwendete Quellen:**")
-                            for i, source in enumerate(debug_info['sources'][:5], 1):  # Show first 5
-                                timestamp = source.get('timestamp', 0)
-                                minutes = int(timestamp // 60)
-                                seconds = int(timestamp % 60)
-                                speaker = source.get('speaker', 'Unknown')
-                                text = source.get('text', '')[:100]
-                                st.markdown(f"{i}. **[{minutes:02d}:{seconds:02d}] {speaker}:** {text}...")
-                
-                # Show quality analysis if available
-                if 'quality_scores' in test_result and test_result['quality_scores']:
-                    with st.expander("🤖 AI-Qualitätsanalyse", expanded=False):
-                        quality_scores = test_result['quality_scores']
-                        
-                        # Metrics
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            coverage = quality_scores.get('chunk_coverage', 0)
-                            st.metric("📊 Chunk Coverage", f"{coverage:.1f}%")
-                        with col2:
-                            gap = quality_scores.get('knowledge_gap', 0)
-                            st.metric("🔧 Knowledge Gap", f"{gap:.1f}%")
-                        with col3:
-                            hallucination = quality_scores.get('hallucination_risk', 0)
-                            st.metric("⚠️ Hallucination Risk", f"{hallucination:.1f}%")
-                        
-                        # Analysis details
-                        if quality_scores.get('analysis_details'):
-                            st.markdown("**Zusammenfassung:**")
-                            st.info(quality_scores['analysis_details'])
-                        
-                        # Detailed reasoning
-                        if quality_scores.get('detailed_reasoning'):
-                            st.markdown("**Detailliertes Reasoning:**")
-                            st.text_area("", quality_scores['detailed_reasoning'], height=200, disabled=True)
-                
-                # Button to clear and to show in main chat
-                button_col1, button_col2 = st.columns(2)
-                with button_col1:
-                    if st.button("📋 In Chat anzeigen", use_container_width=True):
-                        # Add test result to chat history
-                        if 'chat_history' not in st.session_state:
-                            st.session_state.chat_history = []
-                        
-                        # Add initial question
-                        st.session_state.chat_history.append({
-                            'type': 'user',
-                            'content': test_result['initial_question'],
-                            'timestamp': datetime.now().strftime("%H:%M:%S")
-                        })
-                        
-                        # Add final answer
-                        st.session_state.chat_history.append({
-                            'type': 'bot',
-                            'content': test_result['final_answer'],
-                            'confidence': test_result['final_confidence'],
-                            'timestamp': datetime.now().strftime("%H:%M:%S"),
-                            'debug_info': test_result.get('debug_info', {}),
-                            'quality_scores': test_result.get('quality_scores', {})
-                        })
-                        
-                        st.success("✅ Test-Ergebnis zum Chat hinzugefügt!")
-                        st.rerun()
-                
-                with button_col2:
-                    if st.button("🗑️ Test-Ergebnisse löschen", use_container_width=True):
-                        del st.session_state.test_result
-                        st.rerun()
+            st.info("📊 Test-Ergebnisse werden im Hauptfenster angezeigt")
         
         # Information
         st.subheader("ℹ️ Informationen")
@@ -1663,6 +1527,152 @@ def main():
     # Initialize agent if not done
     if not initialize_agent():
         st.stop()
+    
+    # Show test results in main window if available
+    if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
+        st.markdown("## 📊 Test-Ergebnisse: Vollautomatischer Iterativer Test")
+        
+        test_result = st.session_state.test_result
+        
+        # Test summary
+        st.markdown("### 🎯 Test-Zusammenfassung")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Ursprüngliche Frage", test_result['initial_question'][:30] + "...")
+        with col2:
+            st.metric("Anzahl Nachfragen", test_result['num_iterations'])
+        with col3:
+            st.metric("Test-Dauer", f"{test_result['total_duration']:.2f}s")
+        
+        # Iteration history
+        st.markdown("### 🔄 Iterationsverlauf")
+        for i, iteration in enumerate(test_result['iterations'], 1):
+            with st.container():
+                st.markdown(f"**Iteration {i}:**")
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    st.info(f"🤖 **Bot fragt:** {iteration['bot_question']}")
+                with col2:
+                    st.success(f"👤 **Auto-Antwort:** {iteration['auto_answer']}")
+                
+                # Show metrics
+                metric_col1, metric_col2 = st.columns(2)
+                with metric_col1:
+                    st.caption(f"⏱️ Dauer: {iteration['duration']:.2f}s")
+                with metric_col2:
+                    st.caption(f"📊 Confidence: {iteration.get('confidence', 0.0):.1%}")
+                
+                st.markdown("---")
+        
+        # Final answer
+        st.markdown("### ✅ Finale Antwort")
+        st.success(test_result['final_answer'])
+        
+        # Show metrics for final answer
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        with metric_col1:
+            st.metric("Confidence", f"{test_result['final_confidence']:.1%}")
+        with metric_col2:
+            if 'context_chunks_used' in test_result:
+                st.metric("Chunks verwendet", test_result['context_chunks_used'])
+        with metric_col3:
+            if 'total_chunks_found' in test_result:
+                st.metric("Chunks gefunden", test_result['total_chunks_found'])
+        
+        # Show debug info if available
+        if 'debug_info' in test_result and test_result['debug_info']:
+            with st.expander("🔍 Debug-Informationen", expanded=False):
+                debug_info = test_result['debug_info']
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write("**Verarbeitungsdetails:**")
+                    st.write(f"• Modell: {debug_info.get('model', 'N/A')}")
+                    st.write(f"• Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s")
+                    st.write(f"• Chunks verwendet: {debug_info.get('chunks_used', 'N/A')}")
+                    st.write(f"• Chunks gefunden: {debug_info.get('total_chunks', 'N/A')}")
+                
+                with col2:
+                    st.write("**Modi:**")
+                    basti_tone = "✅ Aktiv" if debug_info.get('basti_tone', False) else "❌ Inaktiv"
+                    basti_tone_v2 = "✅ Aktiv" if debug_info.get('basti_tone_v2', False) else "❌ Inaktiv"
+                    clarification = "✅ Aktiv" if debug_info.get('clarification_mode', False) else "❌ Inaktiv"
+                    st.write(f"• Basti O-Ton: {basti_tone}")
+                    st.write(f"• O-Ton-BASTI-AI2: {basti_tone_v2}")
+                    st.write(f"• Nachfrage-Modus: {clarification}")
+                
+                # Show sources
+                if 'sources' in debug_info and debug_info['sources']:
+                    st.markdown("**📚 Verwendete Quellen:**")
+                    for i, source in enumerate(debug_info['sources'][:5], 1):  # Show first 5
+                        timestamp = source.get('timestamp', 0)
+                        minutes = int(timestamp // 60)
+                        seconds = int(timestamp % 60)
+                        speaker = source.get('speaker', 'Unknown')
+                        text = source.get('text', '')[:100]
+                        st.markdown(f"{i}. **[{minutes:02d}:{seconds:02d}] {speaker}:** {text}...")
+        
+        # Show quality analysis if available
+        if 'quality_scores' in test_result and test_result['quality_scores']:
+            with st.expander("🤖 AI-Qualitätsanalyse", expanded=False):
+                quality_scores = test_result['quality_scores']
+                
+                # Metrics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    coverage = quality_scores.get('chunk_coverage', 0)
+                    st.metric("📊 Chunk Coverage", f"{coverage:.1f}%")
+                with col2:
+                    gap = quality_scores.get('knowledge_gap', 0)
+                    st.metric("🔧 Knowledge Gap", f"{gap:.1f}%")
+                with col3:
+                    hallucination = quality_scores.get('hallucination_risk', 0)
+                    st.metric("⚠️ Hallucination Risk", f"{hallucination:.1f}%")
+                
+                # Analysis details
+                if quality_scores.get('analysis_details'):
+                    st.markdown("**Zusammenfassung:**")
+                    st.info(quality_scores['analysis_details'])
+                
+                # Detailed reasoning
+                if quality_scores.get('detailed_reasoning'):
+                    st.markdown("**Detailliertes Reasoning:**")
+                    st.text_area("", quality_scores['detailed_reasoning'], height=200, disabled=True)
+        
+        # Action buttons
+        button_col1, button_col2 = st.columns(2)
+        with button_col1:
+            if st.button("📋 In Chat anzeigen", use_container_width=True):
+                # Add test result to chat history
+                if 'chat_history' not in st.session_state:
+                    st.session_state.chat_history = []
+                
+                # Add initial question
+                st.session_state.chat_history.append({
+                    'type': 'user',
+                    'content': test_result['initial_question'],
+                    'timestamp': datetime.now().strftime("%H:%M:%S")
+                })
+                
+                # Add final answer
+                st.session_state.chat_history.append({
+                    'type': 'bot',
+                    'content': test_result['final_answer'],
+                    'confidence': test_result['final_confidence'],
+                    'timestamp': datetime.now().strftime("%H:%M:%S"),
+                    'debug_info': test_result.get('debug_info', {}),
+                    'quality_scores': test_result.get('quality_scores', {})
+                })
+                
+                st.success("✅ Test-Ergebnis zum Chat hinzugefügt!")
+                st.rerun()
+        
+        with button_col2:
+            if st.button("🗑️ Test-Ergebnisse löschen", use_container_width=True):
+                del st.session_state.test_result
+                st.rerun()
+        
+        st.divider()
     
     # Main content area with chat layout
     col1, col2 = st.columns([3, 1])
