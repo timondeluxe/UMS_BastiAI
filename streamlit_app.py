@@ -801,6 +801,192 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
         st.error(f"Fehler beim Verarbeiten der Frage: {e}")
         return None
 
+def run_automatic_iterative_test():
+    """
+    Führt einen vollautomatischen iterativen Test durch.
+    Stellt eine Frage und beantwortet alle Nachfragen automatisch.
+    """
+    import time
+    
+    # Test configuration
+    initial_question = "Ich möchte abnehmen"
+    max_iterations = 10  # Safety limit
+    
+    # Automatic answers for common questions
+    auto_answers = {
+        "gewicht": "Ich möchte 10 kg abnehmen",
+        "kg": "10 kg",
+        "kilo": "10 kg",
+        "sport": "Ich mache aktuell 2 mal pro Woche Sport, hauptsächlich Joggen",
+        "training": "2 mal pro Woche Joggen, jeweils 30 Minuten",
+        "ernährung": "Ich esse relativ normal, viel Pasta und Brot. Abends oft Fast Food",
+        "essen": "Morgens Müsli, mittags in der Kantine, abends oft Pizza oder Burger",
+        "zeitrahmen": "Ich möchte das in 3 Monaten schaffen",
+        "wann": "In 3 Monaten",
+        "monat": "3 Monate",
+        "versucht": "Ich habe schon Low-Carb probiert, aber nicht durchgehalten",
+        "diät": "Low-Carb habe ich versucht, aber nach 2 Wochen aufgegeben",
+        "hindernis": "Mein größtes Problem ist der Stress bei der Arbeit und Heißhunger abends",
+        "problem": "Stress und Heißhunger abends vor dem Fernseher",
+        "budget": "Ich kann etwa 100 Euro pro Monat für gesundes Essen und Fitness ausgeben",
+        "geld": "100 Euro im Monat",
+        "alter": "Ich bin 35 Jahre alt",
+        "größe": "Ich bin 1,80m groß",
+        "gewohnheit": "Ich sitze viel im Büro und bewege mich wenig im Alltag",
+        "alltag": "Bürojob, 8 Stunden sitzen, wenig Bewegung",
+        "schlaf": "Ich schlafe etwa 6-7 Stunden pro Nacht",
+        "wasser": "Ich trinke etwa 1,5 Liter Wasser am Tag",
+        "motivation": "Ich möchte mich wieder wohler fühlen und gesünder leben"
+    }
+    
+    # Save original settings
+    original_iterative_mode = st.session_state.get('iterative_clarification_mode', False)
+    original_debug_mode = st.session_state.get('debug_mode', False)
+    original_debug_mode_ai = st.session_state.get('debug_mode_ai', False)
+    original_chat_history = st.session_state.get('chat_history', []).copy()
+    
+    try:
+        # Enable iterative mode and all debug modes for the test
+        st.session_state.iterative_clarification_mode = True
+        st.session_state.debug_mode = True
+        st.session_state.debug_mode_ai = True
+        
+        if st.session_state.agent:
+            st.session_state.agent.toggle_iterative_clarification_mode(True)
+        
+        # Clear history for clean test
+        st.session_state.chat_history = []
+        if st.session_state.agent:
+            st.session_state.agent.clear_history()
+        
+        logger.info("🔧 Test-Einstellungen: Alle Debug-Modi aktiviert, Historie gelöscht")
+        
+        logger.info(f"🧪 Starting automatic iterative test with question: '{initial_question}'")
+        
+        test_result = {
+            'initial_question': initial_question,
+            'iterations': [],
+            'final_answer': None,
+            'final_confidence': 0.0,
+            'num_iterations': 0,
+            'total_duration': 0.0
+        }
+        
+        start_time = time.time()
+        current_question = initial_question
+        iteration = 0
+        
+        while iteration < max_iterations:
+            iteration += 1
+            iteration_start = time.time()
+            
+            logger.info(f"🔄 Iteration {iteration}: Asking '{current_question}'")
+            
+            # Ask question
+            response = process_question(current_question)
+            
+            if not response:
+                logger.error("❌ No response received")
+                break
+            
+            iteration_duration = time.time() - iteration_start
+            
+            # Check if this is the final answer
+            debug_info = response.get('debug_info', {})
+            # In iterative mode, check for 'final_answer' flag
+            is_final = response.get('final_answer', False) or (not response.get('iterative_mode', True) and response.get('clarification_mode', False))
+            
+            if is_final:
+                # Final answer received
+                logger.info(f"✅ Final answer received after {iteration} iterations")
+                test_result['final_answer'] = response['answer']
+                test_result['final_confidence'] = response['confidence']
+                test_result['num_iterations'] = iteration
+                test_result['context_chunks_used'] = response.get('context_chunks_used', 0)
+                test_result['total_chunks_found'] = response.get('total_chunks_found', 0)
+                test_result['debug_info'] = debug_info
+                
+                # Trigger quality analysis if debug_mode_ai is enabled
+                if st.session_state.debug_mode_ai and response.get('context_chunks_used', 0) > 0:
+                    logger.info("🤖 Starting AI quality analysis for final answer...")
+                    
+                    # Get chunks from debug info
+                    sources = debug_info.get('sources', [])
+                    chunks = []
+                    for source in sources:
+                        chunks.append({
+                            'chunk_text': source.get('text', ''),
+                            'speaker': source.get('speaker', 'Unknown')
+                        })
+                    
+                    # Perform quality analysis
+                    try:
+                        quality_scores = st.session_state.agent.analyze_answer_quality(
+                            response['answer'], 
+                            chunks, 
+                            initial_question
+                        )
+                        test_result['quality_scores'] = quality_scores
+                        logger.info(f"✅ Quality analysis completed: Coverage={quality_scores.get('chunk_coverage')}%")
+                    except Exception as e:
+                        logger.error(f"❌ Quality analysis failed: {e}")
+                        test_result['quality_scores'] = {
+                            'chunk_coverage': None,
+                            'knowledge_gap': None,
+                            'hallucination_risk': None,
+                            'analysis_details': f'Analyse fehlgeschlagen: {str(e)}'
+                        }
+                
+                break
+            else:
+                # This is a clarification question - find automatic answer
+                bot_question = response['answer']
+                
+                # Find matching auto-answer based on keywords in bot question
+                auto_answer = None
+                bot_question_lower = bot_question.lower()
+                
+                for keyword, answer in auto_answers.items():
+                    if keyword in bot_question_lower:
+                        auto_answer = answer
+                        logger.info(f"✅ Found auto-answer for keyword '{keyword}': {answer}")
+                        break
+                
+                # Fallback answer if no match found
+                if not auto_answer:
+                    auto_answer = "Das kann ich so pauschal nicht sagen, aber ich möchte mein Bestes geben."
+                    logger.warning(f"⚠️ No matching auto-answer found, using fallback")
+                
+                test_result['iterations'].append({
+                    'bot_question': bot_question,
+                    'auto_answer': auto_answer,
+                    'duration': iteration_duration,
+                    'confidence': response['confidence']
+                })
+                
+                # Set next question to the auto-answer
+                current_question = auto_answer
+        
+        test_result['total_duration'] = time.time() - start_time
+        
+        logger.info(f"🎉 Automatic test completed in {test_result['total_duration']:.2f}s with {test_result['num_iterations']} iterations")
+        
+        return test_result
+        
+    except Exception as e:
+        logger.error(f"❌ Automatic test failed: {e}", exc_info=True)
+        return None
+        
+    finally:
+        # Restore original settings
+        st.session_state.iterative_clarification_mode = original_iterative_mode
+        st.session_state.debug_mode = original_debug_mode
+        st.session_state.debug_mode_ai = original_debug_mode_ai
+        
+        if st.session_state.agent:
+            st.session_state.agent.toggle_iterative_clarification_mode(original_iterative_mode)
+
+
 def test_connections():
     """Test database and API connections."""
     test_results = {
@@ -1225,6 +1411,161 @@ def main():
             st.write("• 'Was bedeutet Performance für dich?'")
             st.write("• 'Wie eliminiere ich Ablenkungen?'")
         
+        st.divider()
+        
+        # Automatic iterative test
+        st.subheader("🤖 Automatischer Test")
+        if st.button("🔄 Voll automatischer iterativer Test", use_container_width=True):
+            if st.session_state.agent:
+                with st.spinner("Führe automatischen iterativen Test durch..."):
+                    result = run_automatic_iterative_test()
+                    if result:
+                        st.success("✅ Automatischer Test abgeschlossen!")
+                        st.session_state.test_result = result
+                        st.rerun()
+            else:
+                st.error("Agent nicht initialisiert")
+        
+        # Show test results if available
+        if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
+            with st.expander("📊 Test-Ergebnisse anzeigen", expanded=True):
+                test_result = st.session_state.test_result
+                
+                st.markdown("### 🎯 Test-Zusammenfassung")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Ursprüngliche Frage", test_result['initial_question'][:30] + "...")
+                with col2:
+                    st.metric("Anzahl Nachfragen", test_result['num_iterations'])
+                with col3:
+                    st.metric("Test-Dauer", f"{test_result['total_duration']:.2f}s")
+                
+                st.markdown("### 🔄 Iterationsverlauf")
+                for i, iteration in enumerate(test_result['iterations'], 1):
+                    with st.container():
+                        st.markdown(f"**Iteration {i}:**")
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            st.info(f"🤖 **Bot fragt:** {iteration['bot_question']}")
+                        with col2:
+                            st.success(f"👤 **Auto-Antwort:** {iteration['auto_answer']}")
+                        
+                        # Show metrics
+                        metric_col1, metric_col2 = st.columns(2)
+                        with metric_col1:
+                            st.caption(f"⏱️ Dauer: {iteration['duration']:.2f}s")
+                        with metric_col2:
+                            st.caption(f"📊 Confidence: {iteration.get('confidence', 0.0):.1%}")
+                        
+                        st.markdown("---")
+                
+                st.markdown("### ✅ Finale Antwort")
+                st.success(test_result['final_answer'])
+                
+                # Show metrics for final answer
+                metric_col1, metric_col2, metric_col3 = st.columns(3)
+                with metric_col1:
+                    st.metric("Confidence", f"{test_result['final_confidence']:.1%}")
+                with metric_col2:
+                    if 'context_chunks_used' in test_result:
+                        st.metric("Chunks verwendet", test_result['context_chunks_used'])
+                with metric_col3:
+                    if 'total_chunks_found' in test_result:
+                        st.metric("Chunks gefunden", test_result['total_chunks_found'])
+                
+                # Show debug info if available
+                if 'debug_info' in test_result and test_result['debug_info']:
+                    with st.expander("🔍 Debug-Informationen", expanded=False):
+                        debug_info = test_result['debug_info']
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.write("**Verarbeitungsdetails:**")
+                            st.write(f"• Modell: {debug_info.get('model', 'N/A')}")
+                            st.write(f"• Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s")
+                            st.write(f"• Chunks verwendet: {debug_info.get('chunks_used', 'N/A')}")
+                            st.write(f"• Chunks gefunden: {debug_info.get('total_chunks', 'N/A')}")
+                        
+                        with col2:
+                            st.write("**Modi:**")
+                            basti_tone = "✅ Aktiv" if debug_info.get('basti_tone', False) else "❌ Inaktiv"
+                            basti_tone_v2 = "✅ Aktiv" if debug_info.get('basti_tone_v2', False) else "❌ Inaktiv"
+                            clarification = "✅ Aktiv" if debug_info.get('clarification_mode', False) else "❌ Inaktiv"
+                            st.write(f"• Basti O-Ton: {basti_tone}")
+                            st.write(f"• O-Ton-BASTI-AI2: {basti_tone_v2}")
+                            st.write(f"• Nachfrage-Modus: {clarification}")
+                        
+                        # Show sources
+                        if 'sources' in debug_info and debug_info['sources']:
+                            st.markdown("**📚 Verwendete Quellen:**")
+                            for i, source in enumerate(debug_info['sources'][:5], 1):  # Show first 5
+                                timestamp = source.get('timestamp', 0)
+                                minutes = int(timestamp // 60)
+                                seconds = int(timestamp % 60)
+                                speaker = source.get('speaker', 'Unknown')
+                                text = source.get('text', '')[:100]
+                                st.markdown(f"{i}. **[{minutes:02d}:{seconds:02d}] {speaker}:** {text}...")
+                
+                # Show quality analysis if available
+                if 'quality_scores' in test_result and test_result['quality_scores']:
+                    with st.expander("🤖 AI-Qualitätsanalyse", expanded=False):
+                        quality_scores = test_result['quality_scores']
+                        
+                        # Metrics
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            coverage = quality_scores.get('chunk_coverage', 0)
+                            st.metric("📊 Chunk Coverage", f"{coverage:.1f}%")
+                        with col2:
+                            gap = quality_scores.get('knowledge_gap', 0)
+                            st.metric("🔧 Knowledge Gap", f"{gap:.1f}%")
+                        with col3:
+                            hallucination = quality_scores.get('hallucination_risk', 0)
+                            st.metric("⚠️ Hallucination Risk", f"{hallucination:.1f}%")
+                        
+                        # Analysis details
+                        if quality_scores.get('analysis_details'):
+                            st.markdown("**Zusammenfassung:**")
+                            st.info(quality_scores['analysis_details'])
+                        
+                        # Detailed reasoning
+                        if quality_scores.get('detailed_reasoning'):
+                            st.markdown("**Detailliertes Reasoning:**")
+                            st.text_area("", quality_scores['detailed_reasoning'], height=200, disabled=True)
+                
+                # Button to clear and to show in main chat
+                button_col1, button_col2 = st.columns(2)
+                with button_col1:
+                    if st.button("📋 In Chat anzeigen", use_container_width=True):
+                        # Add test result to chat history
+                        if 'chat_history' not in st.session_state:
+                            st.session_state.chat_history = []
+                        
+                        # Add initial question
+                        st.session_state.chat_history.append({
+                            'type': 'user',
+                            'content': test_result['initial_question'],
+                            'timestamp': datetime.now().strftime("%H:%M:%S")
+                        })
+                        
+                        # Add final answer
+                        st.session_state.chat_history.append({
+                            'type': 'bot',
+                            'content': test_result['final_answer'],
+                            'confidence': test_result['final_confidence'],
+                            'timestamp': datetime.now().strftime("%H:%M:%S"),
+                            'debug_info': test_result.get('debug_info', {}),
+                            'quality_scores': test_result.get('quality_scores', {})
+                        })
+                        
+                        st.success("✅ Test-Ergebnis zum Chat hinzugefügt!")
+                        st.rerun()
+                
+                with button_col2:
+                    if st.button("🗑️ Test-Ergebnisse löschen", use_container_width=True):
+                        del st.session_state.test_result
+                        st.rerun()
+        
         # Information
         st.subheader("ℹ️ Informationen")
         st.info("""
@@ -1238,6 +1579,7 @@ def main():
         - Nachfrage-Modus für spezifische Antworten
         - Iterativer Nachfrage-Modus (Frage für Frage)
         - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
+        - 🔄 Voll automatischer iterativer Test
         """)
         
         # Debug mode explanation
@@ -1396,7 +1738,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.5.0 - Intelligente Qualitätsanalyse: Coverage, Knowledge Gap & Hallucination Risk
+        Version 2.6.0 - Vollautomatischer iterativer Test mit Debug-Modi
     </div>
     """, unsafe_allow_html=True)
 
