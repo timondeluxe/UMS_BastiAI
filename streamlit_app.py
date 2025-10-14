@@ -793,7 +793,13 @@ Antworte jetzt in diesem Ton und Stil auf die Frage des Nutzers."""
                 'knowledge_gap': None,
                 'hallucination_risk': None,
                 'analysis_details': 'Pending'
-            } if needs_analysis else None
+            } if needs_analysis else None,
+            # Pass through important flags from agent response
+            'final_answer': response.get('final_answer', False),
+            'iterative_mode': response.get('iterative_mode', False),
+            'clarification_mode': response.get('clarification_mode', False),
+            'context_chunks_used': response.get('context_chunks_used', 0),
+            'total_chunks_found': response.get('total_chunks_found', 0)
         }
         
     except Exception as e:
@@ -894,7 +900,13 @@ def run_automatic_iterative_test():
             # Check if this is the final answer
             debug_info = response.get('debug_info', {})
             # In iterative mode, check for 'final_answer' flag
-            is_final = response.get('final_answer', False) or (not response.get('iterative_mode', True) and response.get('clarification_mode', False))
+            final_answer_flag = response.get('final_answer', False)
+            iterative_mode_flag = response.get('iterative_mode', False)
+            clarification_mode_flag = response.get('clarification_mode', False)
+            
+            logger.info(f"🔍 Response flags: final_answer={final_answer_flag}, iterative_mode={iterative_mode_flag}, clarification_mode={clarification_mode_flag}")
+            
+            is_final = final_answer_flag
             
             if is_final:
                 # Final answer received
@@ -969,7 +981,17 @@ def run_automatic_iterative_test():
         
         test_result['total_duration'] = time.time() - start_time
         
-        logger.info(f"🎉 Automatic test completed in {test_result['total_duration']:.2f}s with {test_result['num_iterations']} iterations")
+        # Check if we got a final answer
+        if test_result['final_answer'] is None:
+            logger.warning(f"⚠️ Test ended without final answer after {iteration} iterations")
+            if iteration >= max_iterations:
+                test_result['final_answer'] = "Test erreichte maximale Anzahl an Iterationen ohne finale Antwort."
+            else:
+                test_result['final_answer'] = "Test wurde abgebrochen - keine finale Antwort erhalten."
+            test_result['final_confidence'] = 0.0
+            test_result['num_iterations'] = iteration
+        else:
+            logger.info(f"🎉 Automatic test completed in {test_result['total_duration']:.2f}s with {test_result['num_iterations']} iterations")
         
         return test_result
         
