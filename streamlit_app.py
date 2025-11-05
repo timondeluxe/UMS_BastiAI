@@ -164,7 +164,7 @@ def initialize_session_state():
     if 'clarification_mode' not in st.session_state:
         st.session_state.clarification_mode = False
     if 'iterative_clarification_mode' not in st.session_state:
-        st.session_state.iterative_clarification_mode = True
+        st.session_state.iterative_clarification_mode = False  # Default: deaktiviert
     if 'creativity_level' not in st.session_state:
         st.session_state.creativity_level = 0.0  # Default: Maximal quelltreu
     if 'selected_chunk_table' not in st.session_state:
@@ -1193,7 +1193,7 @@ def main():
         iterative_clarification_mode = st.checkbox(
             "🔄 Iterativer Nachfrage-Modus", 
             value=st.session_state.iterative_clarification_mode,
-            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist (Standard: aktiviert)"
+            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist"
         )
         st.session_state.iterative_clarification_mode = iterative_clarification_mode
         
