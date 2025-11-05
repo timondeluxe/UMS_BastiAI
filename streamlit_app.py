@@ -167,6 +167,8 @@ def initialize_session_state():
         st.session_state.iterative_clarification_mode = True
     if 'creativity_level' not in st.session_state:
         st.session_state.creativity_level = 0.0  # Default: Maximal quelltreu
+    if 'selected_chunk_table' not in st.session_state:
+        st.session_state.selected_chunk_table = 'video_chunks'  # Default table
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -174,6 +176,14 @@ def initialize_agent():
         try:
             with st.spinner("Initialisiere Chat Agent..."):
                 st.session_state.agent = MiniChatAgent()
+                
+                # Set initial chunk table if selected
+                selected_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+                try:
+                    st.session_state.agent.set_chunk_table(selected_table)
+                    logger.info(f"Agent initialized with table: {selected_table}")
+                except Exception as e:
+                    logger.warning(f"Could not set initial table: {e}")
                 
                 # Check if Supabase is in mock mode and auto-activate mock data
                 if hasattr(st.session_state.agent, 'video_processor'):
@@ -189,6 +199,13 @@ def initialize_agent():
             st.error(f"Fehler beim Initialisieren des Chat Agents: {e}")
             logger.error(f"Agent initialization failed: {e}")
             return False
+    else:
+        # Agent already exists, update table if changed
+        selected_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        try:
+            st.session_state.agent.set_chunk_table(selected_table)
+        except Exception as e:
+            logger.warning(f"Could not update table: {e}")
     return True
 
 def display_chat_history():
@@ -1236,6 +1253,34 @@ def main():
         
         st.divider()
         
+        # Chunking table selection
+        st.subheader("🗄️ Chunking Datenbasis")
+        available_tables = [
+            "video_chunks",  # semantic (default)
+            "video_chunks_recursive",
+            "video_chunks_video_optimized",
+            "video_chunks_fixed",
+        ]
+        default_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        selected_table = st.selectbox(
+            "Tabelle auswählen",
+            options=available_tables,
+            index=available_tables.index(default_table) if default_table in available_tables else 0,
+            help="Wähle die Datenbasis für die Agent-Suche (vor dem Stellen einer Frage auswählen)",
+            key="chunk_table_selectbox"
+        )
+        st.session_state.selected_chunk_table = selected_table
+        if st.session_state.agent:
+            try:
+                st.session_state.agent.set_chunk_table(selected_table)
+                st.success(f"✅ {selected_table}")
+            except Exception as e:
+                st.warning(f"⚠️ Konnte Tabelle nicht setzen: {e}")
+        else:
+            st.info("⏳ Tabelle wird beim Initialisieren gesetzt")
+        
+        st.divider()
+        
         # Agent status
         st.subheader("🤖 Basti Status")
         if st.session_state.agent:
@@ -1681,6 +1726,17 @@ def main():
         # Chat interface
         st.subheader("💬 Chat")
         
+        # Show active chunk table info
+        active_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        table_labels = {
+            'video_chunks': 'Semantic (Standard)',
+            'video_chunks_recursive': 'Recursive',
+            'video_chunks_video_optimized': 'Video Optimized',
+            'video_chunks_fixed': 'Fixed'
+        }
+        table_label = table_labels.get(active_table, active_table)
+        st.info(f"📊 Aktive Datenbasis: **{table_label}** ({active_table})")
+        
         # Display chat history first (at the top)
         display_chat_history()
         
@@ -1773,6 +1829,7 @@ def main():
         Version 2.6.0 - Vollautomatischer iterativer Test mit Debug-Modi
     </div>
     """, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
