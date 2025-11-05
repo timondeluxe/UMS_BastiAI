@@ -156,9 +156,9 @@ def initialize_session_state():
     if 'debug_mode_ai' not in st.session_state:
         st.session_state.debug_mode_ai = False
     if 'basti_tone' not in st.session_state:
-        st.session_state.basti_tone = False
+        st.session_state.basti_tone = True  # Default: Basti O-Ton aktiviert
     if 'basti_tone_v2' not in st.session_state:
-        st.session_state.basti_tone_v2 = True
+        st.session_state.basti_tone_v2 = False  # Default: O-Ton-BASTI-AI2 deaktiviert
     if 'mock_data_active' not in st.session_state:
         st.session_state.mock_data_active = False
     if 'clarification_mode' not in st.session_state:
@@ -168,7 +168,7 @@ def initialize_session_state():
     if 'creativity_level' not in st.session_state:
         st.session_state.creativity_level = 0.0  # Default: Maximal quelltreu
     if 'selected_chunk_table' not in st.session_state:
-        st.session_state.selected_chunk_table = 'video_chunks'  # Default table
+        st.session_state.selected_chunk_table = 'video_chunks_video_optimized'  # Default table
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -178,7 +178,7 @@ def initialize_agent():
                 st.session_state.agent = MiniChatAgent()
                 
                 # Set initial chunk table if selected
-                selected_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+                selected_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
                 try:
                     st.session_state.agent.set_chunk_table(selected_table)
                     logger.info(f"Agent initialized with table: {selected_table}")
@@ -201,7 +201,7 @@ def initialize_agent():
             return False
     else:
         # Agent already exists, update table if changed
-        selected_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        selected_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
         try:
             st.session_state.agent.set_chunk_table(selected_table)
         except Exception as e:
@@ -1261,11 +1261,11 @@ def main():
             "video_chunks_video_optimized",
             "video_chunks_fixed",
         ]
-        default_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        default_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
         selected_table = st.selectbox(
             "Tabelle auswählen",
             options=available_tables,
-            index=available_tables.index(default_table) if default_table in available_tables else 0,
+            index=available_tables.index(default_table) if default_table in available_tables else 2,
             help="Wähle die Datenbasis für die Agent-Suche (vor dem Stellen einer Frage auswählen)",
             key="chunk_table_selectbox"
         )
@@ -1727,7 +1727,7 @@ def main():
         st.subheader("💬 Chat")
         
         # Show active chunk table info
-        active_table = st.session_state.get('selected_chunk_table', 'video_chunks')
+        active_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
         table_labels = {
             'video_chunks': 'Semantic (Standard)',
             'video_chunks_recursive': 'Recursive',
@@ -1826,7 +1826,7 @@ def main():
     st.markdown("""
     <div style="text-align: center; color: #666; font-size: 0.8rem;">
         BastiAI - Powered by OpenAI & Supabase<br>
-        Version 2.6.0 - Vollautomatischer iterativer Test mit Debug-Modi
+        Version 2.7.0 - Chunk Table Selection & Video Optimized Default
     </div>
     """, unsafe_allow_html=True)
 
