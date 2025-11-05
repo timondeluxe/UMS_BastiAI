@@ -1436,6 +1436,14 @@ Antworte jetzt auf die Frage des Nutzers in diesem charakteristischen Stil."""
         """Check if iterative clarification mode is enabled"""
         return self.iterative_clarification_mode
 
+    def set_chunk_table(self, table_name: str) -> None:
+        """Set the Supabase table used for chunk search."""
+        try:
+            self.video_processor.supabase_client.table_name = table_name
+            logger.info(f"Agent now using chunk table: {table_name}")
+        except Exception as e:
+            logger.error(f"Failed to set chunk table to {table_name}: {e}")
+
 
 class InteractiveChatSession:
     """Interactive chat session for testing"""
