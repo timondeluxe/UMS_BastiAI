@@ -110,6 +110,8 @@ Der neue dynamische Modus analysiert den Sprachstil direkt aus den Video-Chunks:
 UMS_BastiAI/
 ├── streamlit_app.py          # Hauptanwendung
 ├── requirements_streamlit.txt # Dependencies
+├── frontend/
+│   └── corsair-ui/           # Corsair 3.0 React + Tailwind Frontend
 ├── src/
 │   ├── agent/               # Chat Agent
 │   ├── embedding/           # Embedding Generator
@@ -124,6 +126,16 @@ UMS_BastiAI/
 ```bash
 python -m pytest tests/
 ```
+
+### Corsair 3.0 Frontend starten
+
+```bash
+cd frontend/corsair-ui
+npm install
+npm run dev
+```
+
+Die Corsair 3.0 Oberfläche startet standardmäßig im neuen Design. Über den Button „Design wechseln“ (unten rechts) lässt sich zwischen Legacy-Ansicht und der neuen Apple-inspirierten Variante umschalten.
 
 ## 📝 Lizenz
 

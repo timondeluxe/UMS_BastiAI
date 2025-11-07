@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #D4AF37;
+}
+
+html {
+  font-family: theme("fontFamily.sf");
+  background-color: #000;
+}
+
