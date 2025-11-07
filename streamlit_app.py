@@ -318,6 +318,17 @@ def note_block(text: str):
     """Render a neutral monochrome note block."""
     st.markdown(f'<div class="note">{text}</div>', unsafe_allow_html=True)
 
+def rerun_app():
+    """Rerun Streamlit app compatibly across versions."""
+    try:
+        if hasattr(st, "experimental_rerun"):
+            rerun_app()
+        elif hasattr(st, "rerun"):
+            rerun_app()
+    except AttributeError:
+        if hasattr(st, "rerun"):
+            rerun_app()
+
 def render_control_panel():
     """Render collapsible control panel with all settings and debug tools."""
     st.markdown('<div class="menu-panel">', unsafe_allow_html=True)
@@ -331,7 +342,7 @@ def render_control_panel():
         url_debug = str(debug_param).lower() in ["true", "1", "yes", "on"]
         if url_debug != st.session_state.debug_mode:
             st.session_state.debug_mode = url_debug
-            st.experimental_rerun()
+            rerun_app()
 
     st.markdown("#### Systemsteuerung")
     st.session_state.debug_mode = st.checkbox(
@@ -497,7 +508,7 @@ def render_control_panel():
         st.session_state.chat_history = []
         if st.session_state.agent:
             st.session_state.agent.clear_history()
-        st.experimental_rerun()
+        rerun_app()
 
     if st.button("🔄 Voll automatischer iterativer Test", key="auto_test_button"):
         if st.session_state.agent:
@@ -506,7 +517,7 @@ def render_control_panel():
                 if result:
                     st.session_state.test_result = result
                     note_block("✅ Automatischer Test abgeschlossen – Ergebnisse erscheinen im Hauptfenster.")
-                    st.experimental_rerun()
+                    rerun_app()
         else:
             note_block("⚠️ Agent nicht initialisiert.")
 
@@ -1436,7 +1447,7 @@ def main():
             if message.get('type') == 'bot' and message.get('needs_analysis', False):
                 logger.info(f"Found pending quality analysis for message {i}, performing now...")
                 perform_quality_analysis(i)
-                st.rerun()
+                rerun_app()
 
     logo_svg = load_logo_svg()
 
@@ -1453,7 +1464,7 @@ def main():
         menu_label = "✖ Menü schließen" if st.session_state.menu_open else "☰ Menü öffnen"
         if st.button(menu_label, key="menu_toggle"):
             st.session_state.menu_open = not st.session_state.menu_open
-            st.experimental_rerun()
+            rerun_app()
 
     if st.session_state.menu_open:
         render_control_panel()
@@ -1603,12 +1614,12 @@ def main():
                 })
 
                 st.success("✅ Test-Ergebnis zum Chat hinzugefügt!")
-                st.rerun()
+                rerun_app()
 
         with button_col2:
             if st.button("🗑️ Test-Ergebnisse löschen", use_container_width=True):
                 del st.session_state.test_result
-                st.rerun()
+                rerun_app()
 
     st.markdown("### 💬 Chat")
     display_chat_history()
@@ -1655,7 +1666,7 @@ def main():
                 }
                 st.session_state.chat_history.append(bot_message)
 
-            st.rerun()
+            rerun_app()
         else:
             note_block("⚠️ Bitte geben Sie eine Frage ein.")
 
