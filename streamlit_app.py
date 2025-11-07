@@ -53,199 +53,79 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Apple-inspired monochrome styling
+# Custom CSS for better styling
 st.markdown("""
 <style>
-:root {
-    color-scheme: dark;
-    --border-color: rgba(255, 255, 255, 0.25);
-}
-html, body, [class*="stApp"] {
-    background-color: #000;
-    color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, system-ui, sans-serif;
-}
-div[data-testid="stDecoration"] {
-    display: none !important;
-}
-section[data-testid="stSidebar"] {
-    display: none !important;
-}
-header[data-testid="stHeader"] {
-    background: transparent !important;
-}
-a {
-    color: #fff;
-}
-.stMarkdown, .stMarkdown p, label, span, p, h1, h2, h3, h4, h5, h6, div {
-    color: inherit;
-}
-.stButton > button {
-    background-color: #fff;
-    color: #000;
-    border-radius: 18px;
-    border: 2px solid #fff;
-    padding: 0.6rem 1.6rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    transition: all 0.2s ease;
-}
-.stButton > button:hover {
-    background-color: #000;
-    color: #fff;
-    border-color: #fff;
-}
-.stButton > button:focus:not(:active) {
-    outline: 2px solid #fff;
-}
-.stTextArea textarea,
-.stTextInput input,
-[data-baseweb="input"] input {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    border-radius: 18px;
-}
-.stTextArea textarea:focus,
-.stTextInput input:focus,
-[data-baseweb="input"] input:focus {
-    border-color: #fff;
-    box-shadow: none !important;
-}
-.stSelectbox div[data-baseweb="select"] {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    border-radius: 18px;
-}
-.stSelectbox div[data-baseweb="select"]:hover {
-    border-color: #fff;
-}
-.stSlider > div span[data-baseweb="slider-handle"] {
-    background-color: #fff;
-}
-.stSlider > div div[data-baseweb="slider"] {
-    background-color: rgba(255, 255, 255, 0.3);
-}
-.stSlider > div div[data-testid="stTickBar"] {
-    background: transparent;
-}
-.stAlert {
-    background: rgba(255, 255, 255, 0.04);
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    color: #fff !important;
-}
-.stAlert * {
-    color: #fff !important;
-}
-.stMetric {
-    background: rgba(255, 255, 255, 0.04);
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    padding: 1rem 1.4rem;
-}
-[data-testid="stMetricValue"],
-[data-testid="stMetricLabel"],
-[data-testid="stMetricDelta"] {
-    color: #fff !important;
-}
-hr {
-    border-color: rgba(255, 255, 255, 0.15) !important;
-}
-.menu-panel {
-    border: 2px solid var(--border-color);
-    border-radius: 24px;
-    padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.02);
-    margin-bottom: 2rem;
-}
-.status-strip {
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    padding: 0.75rem 1.2rem;
-    background: rgba(255, 255, 255, 0.02);
-    margin-bottom: 1.5rem;
-    font-size: 0.95rem;
-    letter-spacing: 0.04em;
-}
-.logo-container {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 0.75rem 1.2rem;
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.02);
-}
-.logo-container svg {
-    width: 140px;
-    height: auto;
-    opacity: 0.85;
-}
-.app-title {
-    font-size: 2.2rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    margin-bottom: 0.4rem;
-}
-.app-subtitle {
-    font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4em;
-    color: rgba(255, 255, 255, 0.55);
-}
-.chat-message {
-    padding: 1.1rem;
-    border-radius: 20px;
-    margin: 1rem 0;
-    border: 2px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.03);
-}
-.user-message {
-    background: rgba(255, 255, 255, 0.08);
-}
-.bot-message {
-    background: rgba(255, 255, 255, 0.02);
-}
-.confidence-badge {
-    display: inline-block;
-    padding: 0.3rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    margin-top: 0.6rem;
-    text-transform: uppercase;
-}
-.confidence-high {
-    border-color: #fff;
-    color: #000;
-    background: #fff;
-}
-.confidence-medium {
-    border-color: rgba(255, 255, 255, 0.6);
-    color: #fff;
-}
-.confidence-low {
-    border-color: rgba(255, 255, 255, 0.3);
-    color: #fff;
-}
-.chat-input-card {
-    border: 2px solid var(--border-color);
-    border-radius: 24px;
-    padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
-    margin-top: 1.8rem;
-}
-.note {
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    padding: 1rem 1.3rem;
-    background: rgba(255, 255, 255, 0.02);
-    font-size: 0.85rem;
-    letter-spacing: 0.02em;
-}
+    .main-header {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .chat-message {
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 4px solid #1f77b4;
+        color: #333333;
+    }
+    .user-message {
+        background-color: #f0f2f6;
+        border-left-color: #ff6b6b;
+        color: #333333;
+    }
+    .bot-message {
+        background-color: #e8f4fd;
+        border-left-color: #1f77b4;
+        color: #333333;
+    }
+    .debug-info {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 0.5rem;
+        margin: 0.5rem 0;
+        font-size: 0.8rem;
+        color: #333333;
+    }
+    .confidence-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .confidence-high {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .confidence-medium {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .confidence-low {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    .chat-input-container {
+        position: sticky;
+        bottom: 0;
+        background-color: white;
+        padding: 1rem;
+        border-top: 1px solid #e0e0e0;
+        margin-top: 1rem;
+    }
+    .chat-messages-container {
+        max-height: 70vh;
+        overflow-y: auto;
+        padding: 1rem 0;
+    }
+    .stTextArea > div > div > textarea {
+        height: 120px !important;
+    }
 </style>
+
 """, unsafe_allow_html=True)
 
 def get_confidence_class(confidence):
@@ -284,250 +164,11 @@ def initialize_session_state():
     if 'clarification_mode' not in st.session_state:
         st.session_state.clarification_mode = False
     if 'iterative_clarification_mode' not in st.session_state:
-        st.session_state.iterative_clarification_mode = False  # Default: deaktiviert
+        st.session_state.iterative_clarification_mode = True
     if 'creativity_level' not in st.session_state:
         st.session_state.creativity_level = 0.0  # Default: Maximal quelltreu
     if 'selected_chunk_table' not in st.session_state:
         st.session_state.selected_chunk_table = 'video_chunks_video_optimized'  # Default table
-    if 'menu_open' not in st.session_state:
-        st.session_state.menu_open = False
-    if 'test_mode' not in st.session_state:
-        st.session_state.test_mode = False
-    if 'chunk_table_error' not in st.session_state:
-        st.session_state.chunk_table_error = None
-
-def load_logo_svg() -> str:
-    """Return Umsetzer logo SVG as string."""
-    logo_path = Path(__file__).parent / "assets" / "umsetzer_logo.svg"
-    if logo_path.exists():
-        return logo_path.read_text(encoding="utf-8")
-    return ""
-
-def apply_selected_chunk_table():
-    """Ensure agent uses the selected chunk table."""
-    selected_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
-    if st.session_state.agent:
-        try:
-            st.session_state.agent.set_chunk_table(selected_table)
-        except Exception as exc:
-            st.session_state.chunk_table_error = str(exc)
-        else:
-            st.session_state.chunk_table_error = None
-
-def note_block(text: str):
-    """Render a neutral monochrome note block."""
-    st.markdown(f'<div class="note">{text}</div>', unsafe_allow_html=True)
-
-def rerun_app():
-    """Rerun Streamlit app compatibly across versions."""
-    try:
-        if hasattr(st, "experimental_rerun"):
-            rerun_app()
-        elif hasattr(st, "rerun"):
-            rerun_app()
-    except AttributeError:
-        if hasattr(st, "rerun"):
-            rerun_app()
-
-def render_control_panel():
-    """Render collapsible control panel with all settings and debug tools."""
-    st.markdown('<div class="menu-panel">', unsafe_allow_html=True)
-    st.markdown("### ⚙️ Menü & Debug")
-
-    query_params = st.query_params
-    if 'debug' in query_params:
-        debug_param = query_params['debug']
-        if isinstance(debug_param, list):
-            debug_param = debug_param[0]
-        url_debug = str(debug_param).lower() in ["true", "1", "yes", "on"]
-        if url_debug != st.session_state.debug_mode:
-            st.session_state.debug_mode = url_debug
-            rerun_app()
-
-    st.markdown("#### Systemsteuerung")
-    st.session_state.debug_mode = st.checkbox(
-        "Debug-Modus aktivieren",
-        value=st.session_state.debug_mode,
-        help="Zeigt zusätzliche Informationen wie Quellen und Verarbeitungszeiten an."
-    )
-    st.session_state.debug_mode_ai = st.checkbox(
-        "🤖 Debug-Modus mit AI-Funktionen",
-        value=st.session_state.debug_mode_ai,
-        help="⚠️ Sehr rechenintensiv – aktiviert detaillierte Qualitätsanalysen (Chunk Coverage, Knowledge Gap, Hallucination Risk)."
-    )
-
-    st.markdown("#### Kreativitätsstufe")
-    creativity_level = st.slider(
-        "Quelltreue vs. Kreativität",
-        min_value=0.0,
-        max_value=1.0,
-        value=st.session_state.creativity_level,
-        step=0.1,
-        help="Steuert, wie strikt Antworten an den Video-Chunks bleiben sollen."
-    )
-    st.session_state.creativity_level = creativity_level
-    if creativity_level <= 0.3:
-        note_block(f"🔒 Sehr restriktiv ({creativity_level:.1f}) – nur Informationen aus den Chunks.")
-    elif creativity_level <= 0.6:
-        note_block(f"⚖️ Ausgewogen ({creativity_level:.1f}) – Chunks mit leichten Ergänzungen.")
-    else:
-        note_block(f"🎨 Kreativ ({creativity_level:.1f}) – Chunks mit erweiterten Ergänzungen.")
-
-    st.markdown("#### O-Ton Optionen")
-    st.session_state.basti_tone = st.checkbox(
-        "Basti O-Ton aktivieren",
-        value=st.session_state.basti_tone,
-        help="Aktiviert den statischen Performance-Coach Ton."
-    )
-    st.session_state.basti_tone_v2 = st.checkbox(
-        "🎭 O-Ton-BASTI-AI2-Modus",
-        value=st.session_state.basti_tone_v2,
-        help="Dynamischer Stil: analysiert den Sprachstil aus den Chunks."
-    )
-    if st.session_state.basti_tone and st.session_state.basti_tone_v2:
-        note_block("⚠️ Beide O-Ton-Modi aktiv – O-Ton-BASTI-AI2 hat Priorität.")
-
-    st.markdown("#### Nachfrage-Modus")
-    st.session_state.clarification_mode = st.checkbox(
-        "🤔 Nachfrage-Modus aktivieren",
-        value=st.session_state.clarification_mode,
-        help="Aktiviert automatische Nachfragen bei unspezifischen Fragen."
-    )
-    st.session_state.iterative_clarification_mode = st.checkbox(
-        "🔄 Iterativer Nachfrage-Modus",
-        value=st.session_state.iterative_clarification_mode,
-        help="Sammelt Informationen Schritt für Schritt, bevor eine finale Antwort erstellt wird."
-    )
-
-    if st.session_state.agent:
-        st.session_state.agent.toggle_clarification_mode(st.session_state.clarification_mode)
-        st.session_state.agent.toggle_iterative_clarification_mode(st.session_state.iterative_clarification_mode)
-
-    st.markdown("#### Datenbasis")
-    available_tables = [
-        "video_chunks",
-        "video_chunks_recursive",
-        "video_chunks_video_optimized",
-        "video_chunks_fixed",
-    ]
-    current_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
-    selected_table = st.selectbox(
-        "Tabelle auswählen",
-        options=available_tables,
-        index=available_tables.index(current_table) if current_table in available_tables else 0,
-        help="Wählt die Supabase-Tabelle für die Chunk-Suche."
-    )
-    st.session_state.selected_chunk_table = selected_table
-    apply_selected_chunk_table()
-
-    table_labels = {
-        "video_chunks": "Semantic (Standard)",
-        "video_chunks_recursive": "Recursive",
-        "video_chunks_video_optimized": "Video Optimized",
-        "video_chunks_fixed": "Fixed",
-    }
-    table_label = table_labels.get(selected_table, selected_table)
-    if st.session_state.chunk_table_error:
-        note_block(f"⚠️ Konnte Tabelle nicht setzen: {st.session_state.chunk_table_error}")
-    else:
-        note_block(f"✅ Aktive Datenbasis: {table_label} ({selected_table})")
-
-    st.markdown("#### Diagnose")
-    st.session_state.test_mode = st.checkbox(
-        "🔧 Test-Modus aktivieren",
-        value=st.session_state.test_mode,
-        help="Führt schnelle Verbindungstests zu OpenAI und Supabase aus."
-    )
-
-    if st.session_state.test_mode:
-        st.markdown("##### Verbindungstest")
-        with st.spinner("Teste Verbindungen..."):
-            test_results = test_connections()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            note_block("✅ OpenAI") if test_results['openai'] else note_block("⚠️ OpenAI fehlgeschlagen")
-            note_block("✅ Supabase") if test_results['supabase'] else note_block("⚠️ Supabase fehlgeschlagen")
-        with col2:
-            note_block("✅ Datenbank erreichbar") if test_results['database_query'] else note_block("⚠️ Datenbank nicht erreichbar")
-            note_block(f"📊 Gefundene Chunks: {test_results['chunks_found']}")
-
-        if test_results['error_messages']:
-            for error in test_results['error_messages']:
-                note_block(f"⚠️ {error}")
-
-    st.markdown("#### Supabase Debug")
-    if st.button("Supabase-Verbindung testen", key="supabase_debug_button"):
-        with st.spinner("Teste Supabase-Verbindung..."):
-            try:
-                if st.session_state.agent:
-                    supabase_client = st.session_state.agent.video_processor.supabase_client
-
-                    if supabase_client.mock_mode:
-                        note_block("⚠️ Supabase im Mock-Modus – keine echte Verbindung.")
-                        st.markdown("**Grund:** Supabase-Credentials nicht gefunden.")
-                        st.markdown("**Lösung:** Credentials in Streamlit Cloud Secrets oder Environment Variablen hinterlegen.")
-
-                        st.markdown("##### Debug: Verfügbare Credentials")
-                        try:
-                            from config.settings import settings
-
-                            st.markdown("**Via Settings:**")
-                            note_block(f"SUPABASE_URL: {'✅ gesetzt' if settings.supabase_url else '⚠️ fehlt'}")
-                            note_block(f"SUPABASE_PUBLISHABLE_KEY: {'✅ gesetzt' if settings.supabase_publishable_key else '⚠️ fehlt'}")
-                            note_block(f"SUPABASE_SECRET_KEY: {'✅ gesetzt' if settings.supabase_secret_key else '⚠️ fehlt'}")
-                            note_block(f"OPENAI_API_KEY: {'✅ gesetzt' if settings.openai_api_key else '⚠️ fehlt'}")
-
-                        except Exception as settings_error:
-                            note_block(f"⚠️ Fehler beim Laden der Settings: {settings_error}")
-
-                        st.markdown("##### Mock-Daten für Tests")
-                        if st.button("Mock-Daten aktivieren", key="activate_mock_data"):
-                            st.session_state.mock_data_active = True
-                            note_block("✅ Mock-Daten aktiviert – Sie können jetzt Fragen stellen.")
-
-                    else:
-                        note_block("✅ Supabase-Verbindung aktiv.")
-                        test_query = "Performance"
-                        st.markdown(f"**Test-Suche:** '{test_query}'")
-                        results = supabase_client.search_similar_chunks([0.1] * 1536, limit=5)
-                        note_block(f"📊 Gefundene Chunks: {len(results)}")
-                        if results:
-                            note_block("✅ Chunks gefunden – hier die ersten Einträge:")
-                            for idx, chunk in enumerate(results[:3], 1):
-                                st.markdown(f"{idx}. {chunk.get('chunk_text', '')[:120]}…")
-                        else:
-                            note_block("⚠️ Keine Chunks gefunden – bitte Datenbank prüfen.")
-                else:
-                    note_block("⚠️ Agent nicht initialisiert.")
-            except Exception as supabase_error:
-                note_block(f"⚠️ Fehler beim Supabase-Test: {supabase_error}")
-
-    st.markdown("#### Aktionen")
-    if st.button("🗑️ Chat-Verlauf löschen", key="clear_history_button"):
-        st.session_state.chat_history = []
-        if st.session_state.agent:
-            st.session_state.agent.clear_history()
-        rerun_app()
-
-    if st.button("🔄 Voll automatischer iterativer Test", key="auto_test_button"):
-        if st.session_state.agent:
-            with st.spinner("Führe automatischen iterativen Test durch..."):
-                result = run_automatic_iterative_test()
-                if result:
-                    st.session_state.test_result = result
-                    note_block("✅ Automatischer Test abgeschlossen – Ergebnisse erscheinen im Hauptfenster.")
-                    rerun_app()
-        else:
-            note_block("⚠️ Agent nicht initialisiert.")
-
-    if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
-        note_block("📊 Test-Ergebnisse werden im Hauptfenster angezeigt.")
-
-    if st.session_state.get('mock_data_active'):
-        note_block("🧪 Mock-Daten aktiv – für Live-Betrieb Supabase-Verbindung herstellen.")
-
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def initialize_agent():
     """Initialize the chat agent"""
@@ -1437,9 +1078,10 @@ def test_connections():
 
 def main():
     """Main Streamlit application"""
-
+    
+    # Initialize session state
     initialize_session_state()
-
+    
     # Check if there are any pending quality analyses
     # This runs BEFORE displaying the UI to update scores
     if st.session_state.agent:
@@ -1447,57 +1089,497 @@ def main():
             if message.get('type') == 'bot' and message.get('needs_analysis', False):
                 logger.info(f"Found pending quality analysis for message {i}, performing now...")
                 perform_quality_analysis(i)
-                rerun_app()
-
-    logo_svg = load_logo_svg()
-
-    header_cols = st.columns([1.4, 3, 1.4])
-    with header_cols[0]:
-        if logo_svg:
-            st.markdown(f'<div class="logo-container">{logo_svg}</div>', unsafe_allow_html=True)
+                # After completing analysis, rerun to show updated scores
+                st.rerun()
+    
+    # Initialize variables to avoid UnboundLocalError
+    debug_mode = False
+    basti_tone = True
+    
+    # Header
+    st.markdown('<h1 class="main-header">🤖 BastiAI</h1>', unsafe_allow_html=True)
+    
+    # Sidebar for settings
+    with st.sidebar:
+        st.header("⚙️ Einstellungen")
+        
+        # Debug mode toggle
+        debug_mode = st.checkbox(
+            "Debug-Modus aktivieren", 
+            value=st.session_state.debug_mode,
+            help="Zeigt zusätzliche Informationen wie Quellen und Verarbeitungszeiten"
+        )
+        st.session_state.debug_mode = debug_mode
+        
+        # Debug mode with AI functions toggle
+        debug_mode_ai = st.checkbox(
+            "🤖 Debug-Modus mit AI-Funktionen", 
+            value=st.session_state.debug_mode_ai,
+            help="⚠️ VORSICHT: Sehr langsam! Aktiviert detaillierte Qualitätsanalyse mit Chunk Coverage, Knowledge Gap und Hallucination Risk"
+        )
+        st.session_state.debug_mode_ai = debug_mode_ai
+        
+        st.divider()
+        
+        # Creativity Level Slider
+        st.subheader("🎨 Kreativitätsstufe")
+        creativity_level = st.slider(
+            "Quelltreue vs. Kreativität",
+            min_value=0.0,
+            max_value=1.0,
+            value=st.session_state.creativity_level,
+            step=0.1,
+            help="""
+            Steuert wie eng sich die Antworten an den Video-Chunks orientieren:
+            
+            • 0.0 = Maximal restriktiv (Standard)
+              - Nur Informationen aus Chunks
+              - Keine Ergänzungen oder Interpretationen
+              - Reine Zusammenfassung
+              
+            • 0.5 = Ausgewogen
+              - Hauptsächlich Chunk-Informationen
+              - Leichte Erklärungen und Verbindungen
+              
+            • 1.0 = Maximal kreativ
+              - Chunks als Basis
+              - Viele LLM-Ergänzungen möglich
+              - Interpretationen und Kontext
+            """
+        )
+        st.session_state.creativity_level = creativity_level
+        
+        # Visual indicator
+        if creativity_level <= 0.3:
+            st.success(f"🔒 Sehr restriktiv ({creativity_level:.1f}) - Nur Chunk-Infos")
+        elif creativity_level <= 0.6:
+            st.info(f"⚖️ Ausgewogen ({creativity_level:.1f}) - Chunks + leichte Ergänzungen")
         else:
-            st.markdown('<div class="logo-container">Umsetzer</div>', unsafe_allow_html=True)
-    with header_cols[1]:
-        st.markdown('<div class="app-title">Umsetzer · BastiAI</div>', unsafe_allow_html=True)
-        st.markdown('<div class="app-subtitle">Version 3.0</div>', unsafe_allow_html=True)
-    with header_cols[2]:
-        menu_label = "✖ Menü schließen" if st.session_state.menu_open else "☰ Menü öffnen"
-        if st.button(menu_label, key="menu_toggle"):
-            st.session_state.menu_open = not st.session_state.menu_open
-            rerun_app()
-
-    if st.session_state.menu_open:
-        render_control_panel()
-
+            st.warning(f"🎨 Kreativ ({creativity_level:.1f}) - Chunks + viele Ergänzungen")
+        
+        # Basti O-Ton toggle
+        basti_tone = st.checkbox(
+            "Basti O-Ton aktivieren", 
+            value=st.session_state.basti_tone,
+            help="Aktiviert Bastians charakteristischen Performance-Coach Ton mit statischem Prompt (veraltet - verwende stattdessen O-Ton-BASTI-AI2)"
+        )
+        st.session_state.basti_tone = basti_tone
+        
+        # Basti O-Ton V2 toggle (dynamischer Modus)
+        basti_tone_v2 = st.checkbox(
+            "🎭 O-Ton-BASTI-AI2-Modus", 
+            value=st.session_state.basti_tone_v2,
+            help="Dynamischer O-Ton-Modus: Analysiert den Sprachstil aus den Chunks und passt die Antwort entsprechend an (Standard: aktiviert)"
+        )
+        st.session_state.basti_tone_v2 = basti_tone_v2
+        
+        # Warning if both modes are active
+        if basti_tone and basti_tone_v2:
+            st.warning("⚠️ Beide O-Ton-Modi sind aktiv. O-Ton-BASTI-AI2 hat Priorität.")
+        
+        # Nachfrage-Modus toggle
+        clarification_mode = st.checkbox(
+            "🤔 Nachfrage-Modus aktivieren", 
+            value=st.session_state.clarification_mode,
+            help="Aktiviert automatische Nachfragen bei unspezifischen Fragen"
+        )
+        st.session_state.clarification_mode = clarification_mode
+        
+        # Update agent clarification mode if agent exists
+        if st.session_state.agent:
+            st.session_state.agent.toggle_clarification_mode(clarification_mode)
+        
+        # Iterativer Nachfrage-Modus toggle
+        iterative_clarification_mode = st.checkbox(
+            "🔄 Iterativer Nachfrage-Modus", 
+            value=st.session_state.iterative_clarification_mode,
+            help="Stellt EINE Nachfrage nach der anderen, bis genug Spezifität für eine vollständige Antwort erreicht ist (Standard: aktiviert)"
+        )
+        st.session_state.iterative_clarification_mode = iterative_clarification_mode
+        
+        # Update agent iterative mode if agent exists
+        if st.session_state.agent:
+            st.session_state.agent.toggle_iterative_clarification_mode(iterative_clarification_mode)
+        
+        # Test mode toggle
+        test_mode = st.checkbox(
+            "🔧 Test-Modus aktivieren", 
+            value=st.session_state.get('test_mode', False),
+            help="Testet die Verbindungen zu OpenAI und Supabase"
+        )
+        st.session_state.test_mode = test_mode
+        
+        # Run connection tests if test mode is enabled
+        if test_mode:
+            st.subheader("🔧 Verbindungstest")
+            with st.spinner("Teste Verbindungen..."):
+                test_results = test_connections()
+            
+            # Display test results
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if test_results['openai']:
+                    st.success("✅ OpenAI")
+                else:
+                    st.error("❌ OpenAI")
+                
+                if test_results['supabase']:
+                    st.success("✅ Supabase")
+                else:
+                    st.error("❌ Supabase")
+            
+            with col2:
+                if test_results['database_query']:
+                    st.success("✅ Datenbank")
+                else:
+                    st.error("❌ Datenbank")
+                
+                st.info(f"📊 Chunks: {test_results['chunks_found']}")
+            
+            # Show error messages if any
+            if test_results['error_messages']:
+                st.error("Fehler:")
+                for error in test_results['error_messages']:
+                    st.error(f"• {error}")
+        
+        # Check URL parameters for debug mode
+        query_params = st.query_params
+        if 'debug' in query_params:
+            url_debug = query_params['debug'].lower() in ['true', '1', 'yes']
+            if url_debug != st.session_state.debug_mode:
+                st.session_state.debug_mode = url_debug
+                st.rerun()
+        
+        st.divider()
+        
+        # Chunking table selection
+        st.subheader("🗄️ Chunking Datenbasis")
+        available_tables = [
+            "video_chunks",  # semantic (default)
+            "video_chunks_recursive",
+            "video_chunks_video_optimized",
+            "video_chunks_fixed",
+        ]
+        default_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
+        selected_table = st.selectbox(
+            "Tabelle auswählen",
+            options=available_tables,
+            index=available_tables.index(default_table) if default_table in available_tables else 2,
+            help="Wähle die Datenbasis für die Agent-Suche (vor dem Stellen einer Frage auswählen)",
+            key="chunk_table_selectbox"
+        )
+        st.session_state.selected_chunk_table = selected_table
+        if st.session_state.agent:
+            try:
+                st.session_state.agent.set_chunk_table(selected_table)
+                st.success(f"✅ {selected_table}")
+            except Exception as e:
+                st.warning(f"⚠️ Konnte Tabelle nicht setzen: {e}")
+        else:
+            st.info("⏳ Tabelle wird beim Initialisieren gesetzt")
+        
+        st.divider()
+        
+        # Agent status
+        st.subheader("🤖 Basti Status")
+        if st.session_state.agent:
+            st.success("✅ Basti bereit")
+            
+            # Show clarification mode status
+            if hasattr(st.session_state.agent, 'is_clarification_mode_enabled'):
+                clarification_enabled = st.session_state.agent.is_clarification_mode_enabled()
+                iterative_enabled = st.session_state.agent.is_iterative_clarification_mode_enabled()
+                
+                if iterative_enabled:
+                    st.info("🔄 Iterativer Nachfrage-Modus: Aktiv")
+                elif clarification_enabled:
+                    st.info("🤔 Nachfrage-Modus: Aktiv")
+                else:
+                    st.warning("🤔 Nachfrage-Modus: Inaktiv")
+        else:
+            st.warning("⚠️ Basti nicht initialisiert")
+        
+        # Clear chat history
+        if st.button("🗑️ Chat-Verlauf löschen"):
+            st.session_state.chat_history = []
+            if st.session_state.agent:
+                st.session_state.agent.clear_history()
+            st.rerun()
+        
+        st.divider()
+        
+        # Debug Supabase connection
+        st.subheader("🔍 Debug Supabase")
+        if st.button("Supabase-Verbindung testen"):
+            with st.spinner("Teste Supabase-Verbindung..."):
+                try:
+                    if st.session_state.agent:
+                        # Test Supabase connection
+                        supabase_client = st.session_state.agent.video_processor.supabase_client
+                        
+                        if supabase_client.mock_mode:
+                            st.warning("⚠️ Supabase im Mock-Modus - keine echte Verbindung")
+                            st.write("**Grund:** Supabase-Credentials nicht gefunden")
+                            st.write("**Lösung:** Fügen Sie Supabase-Credentials in Streamlit Cloud Secrets hinzu")
+                            
+                            # Debug: Show what credentials are available
+                            st.subheader("🔍 Debug: Verfügbare Credentials")
+                            try:
+                                from config.settings import settings
+                                import os
+                                
+                                # Check settings first
+                                st.write("**Via Settings:**")
+                                st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if settings.supabase_url else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if settings.supabase_publishable_key else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if settings.supabase_secret_key else '❌ Nicht gesetzt'}")
+                                st.write(f"**OPENAI_API_KEY:** {'✅ Gesetzt' if settings.openai_api_key else '❌ Nicht gesetzt'}")
+                                
+                                # Check environment variables directly
+                                st.write("**Via Environment Variables:**")
+                                st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if os.getenv('SUPABASE_URL') else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if os.getenv('SUPABASE_PUBLISHABLE_KEY') else '❌ Nicht gesetzt'}")
+                                st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if os.getenv('SUPABASE_SECRET_KEY') else '❌ Nicht gesetzt'}")
+                                
+                                # Check Streamlit secrets directly
+                                st.write("**Via Streamlit Secrets:**")
+                                try:
+                                    secrets = st.secrets
+                                    st.write(f"**SUPABASE_URL:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_URL') else '❌ Nicht gesetzt'}")
+                                    st.write(f"**SUPABASE_PUBLISHABLE_KEY:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_PUBLISHABLE_KEY') else '❌ Nicht gesetzt'}")
+                                    st.write(f"**SUPABASE_SECRET_KEY:** {'✅ Gesetzt' if hasattr(secrets, 'SUPABASE_SECRET_KEY') else '❌ Nicht gesetzt'}")
+                                except Exception as e:
+                                    st.write(f"**Streamlit Secrets Error:** {e}")
+                                
+                                # Show actual values (masked for security)
+                                if settings.supabase_url:
+                                    st.write(f"**URL:** {settings.supabase_url[:20]}...")
+                                if settings.supabase_publishable_key:
+                                    st.write(f"**Publishable Key:** {settings.supabase_publishable_key[:20]}...")
+                                if settings.supabase_secret_key:
+                                    st.write(f"**Secret Key:** {settings.supabase_secret_key[:20]}...")
+                                    
+                            except Exception as e:
+                                st.error(f"Fehler beim Laden der Settings: {e}")
+                            
+                            # Show mock data for testing
+                            st.subheader("🧪 Mock-Daten für Tests")
+                            if st.button("Mock-Daten aktivieren"):
+                                st.session_state.mock_data_active = True
+                                st.success("✅ Mock-Daten aktiviert! Sie können jetzt Fragen stellen.")
+                            
+                            # Direct Supabase connection test
+                            st.subheader("🔧 Direkte Supabase-Verbindung testen")
+                            
+                            # Simple test first
+                            st.write("**🔍 Einfacher Test...**")
+                            st.write(f"**st verfügbar:** {st is not None}")
+                            st.write(f"**st.secrets verfügbar:** {hasattr(st, 'secrets')}")
+                            
+                            if st.button("Supabase direkt verbinden"):
+                                st.write("**🔍 Button geklickt - starte direkte Verbindung...**")
+                                
+                                try:
+                                    st.write("**Schritt 1: Importiere Supabase...**")
+                                    from supabase import create_client, Client
+                                    st.write("✅ Supabase importiert")
+                                    
+                                    st.write("**Schritt 2: Prüfe st.secrets...**")
+                                    st.write(f"**st.secrets verfügbar:** {hasattr(st, 'secrets')}")
+                                    
+                                    if hasattr(st, 'secrets'):
+                                        st.write("✅ st.secrets verfügbar")
+                                        
+                                        st.write("**Schritt 3: Prüfe Supabase-Secrets...**")
+                                        st.write(f"**SUPABASE_URL in secrets:** {hasattr(st.secrets, 'SUPABASE_URL')}")
+                                        st.write(f"**SUPABASE_SECRET_KEY in secrets:** {hasattr(st.secrets, 'SUPABASE_SECRET_KEY')}")
+                                        
+                                        if hasattr(st.secrets, 'SUPABASE_URL') and hasattr(st.secrets, 'SUPABASE_SECRET_KEY'):
+                                            st.write("✅ Supabase-Secrets verfügbar")
+                                            
+                                            st.write("**Schritt 4: Lade Credentials...**")
+                                            try:
+                                                supabase_url = st.secrets.SUPABASE_URL
+                                                supabase_key = st.secrets.SUPABASE_SECRET_KEY
+                                                st.write(f"**URL geladen:** {supabase_url[:20]}...")
+                                                st.write(f"**Key geladen:** {supabase_key[:20]}...")
+                                                
+                                                st.write("**Schritt 5: Erstelle Supabase-Client...**")
+                                                client = create_client(supabase_url, supabase_key)
+                                                st.write("✅ Supabase-Client erstellt")
+                                                
+                                                st.write("**Schritt 6: Teste Verbindung...**")
+                                                result = client.table("video_chunks").select("*").limit(1).execute()
+                                                
+                                                if result.data:
+                                                    st.success("✅ Supabase-Verbindung erfolgreich!")
+                                                    st.write(f"**Gefundene Chunks:** {len(result.data)}")
+                                                    st.write("**Erste Chunk:**")
+                                                    st.write(result.data[0].get('chunk_text', '')[:100] + "...")
+                                                    
+                                                    # Force agent to use real Supabase
+                                                    st.session_state.mock_data_active = False
+                                                    st.success("✅ Echte Supabase-Daten aktiviert!")
+                                                else:
+                                                    st.warning("⚠️ Verbindung erfolgreich, aber keine Daten gefunden")
+                                            except Exception as e:
+                                                st.error(f"❌ Fehler beim Zugriff auf Secrets: {e}")
+                                                st.write(f"**Fehlerdetails:** {str(e)}")
+                                        else:
+                                            st.error("❌ Supabase-Secrets nicht in st.secrets verfügbar")
+                                    else:
+                                        st.error("❌ st.secrets nicht verfügbar")
+                                        
+                                except Exception as e:
+                                    st.error(f"❌ Direkte Verbindung fehlgeschlagen: {e}")
+                                    st.write(f"**Fehlerdetails:** {str(e)}")
+                                    import traceback
+                                    st.write(f"**Traceback:** {traceback.format_exc()}")
+                            else:
+                                st.write("**⏳ Warten auf Button-Klick...**")
+                        else:
+                            st.success("✅ Supabase-Verbindung aktiv")
+                            
+                            # Test search
+                            test_query = "Performance"
+                            st.write(f"**Test-Suche:** '{test_query}'")
+                            
+                            results = supabase_client.search_similar_chunks(
+                                [0.1] * 1536,  # Dummy embedding
+                                limit=5
+                            )
+                            
+                            st.write(f"**Gefundene Chunks:** {len(results)}")
+                            
+                            if results:
+                                st.success("✅ Chunks gefunden!")
+                                for i, chunk in enumerate(results[:3]):
+                                    st.write(f"{i+1}. {chunk.get('chunk_text', '')[:100]}...")
+                            else:
+                                st.warning("⚠️ Keine Chunks gefunden")
+                                st.write("**Mögliche Gründe:**")
+                                st.write("• Keine Daten in der Datenbank")
+                                st.write("• Falsche Tabellenstruktur")
+                                st.write("• Embedding-Dimensionen stimmen nicht überein")
+                    else:
+                        st.error("Agent nicht initialisiert")
+                except Exception as e:
+                    st.error(f"Fehler beim Testen: {e}")
+                    st.write(f"**Fehlerdetails:** {str(e)}")
+        
+        # Mock data status
+        if hasattr(st.session_state, 'mock_data_active') and st.session_state.mock_data_active:
+            st.success("🧪 Mock-Daten aktiv - Sie können jetzt Fragen stellen!")
+            st.write("**Test-Fragen:**")
+            st.write("• 'Was sind die wichtigsten Strategien für Unternehmer?'")
+            st.write("• 'Was ist die 80/20-Regel?'")
+            st.write("• 'Wie baue ich ein starkes Team auf?'")
+            st.write("• 'Was bedeutet Performance für dich?'")
+            st.write("• 'Wie eliminiere ich Ablenkungen?'")
+        
+        st.divider()
+        
+        # Automatic iterative test - Button only in sidebar
+        st.subheader("🤖 Automatischer Test")
+        if st.button("🔄 Voll automatischer iterativer Test", use_container_width=True):
+            if st.session_state.agent:
+                with st.spinner("Führe automatischen iterativen Test durch..."):
+                    result = run_automatic_iterative_test()
+                    if result:
+                        st.success("✅ Automatischer Test abgeschlossen!")
+                        st.session_state.test_result = result
+                        st.rerun()
+            else:
+                st.error("Agent nicht initialisiert")
+        
+        # Just show a note in sidebar if test results are available
+        if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
+            st.info("📊 Test-Ergebnisse werden im Hauptfenster angezeigt")
+        
+        # Information
+        st.subheader("ℹ️ Informationen")
+        st.info("""
+        **Verfügbare Funktionen:**
+        - Fragen zu Video-Inhalten stellen
+        - Vertrauens-Score für Antworten
+        - Debug-Modus für detaillierte Infos
+        - Debug-Modus mit AI (sehr langsam!)
+        - Chat-Verlauf
+        - Test-Daten hinzufügen
+        - Nachfrage-Modus für spezifische Antworten
+        - Iterativer Nachfrage-Modus (Frage für Frage)
+        - O-Ton-BASTI-AI2: Dynamischer Stil aus Chunks
+        - 🔄 Voll automatischer iterativer Test
+        """)
+        
+        # Debug mode explanation
+        if st.session_state.debug_mode or st.session_state.debug_mode_ai:
+            st.divider()
+            st.subheader("🔧 Debug-Modi Erklärung")
+            
+            if st.session_state.debug_mode:
+                st.success("""
+                **✅ Debug-Modus aktiv:**
+                - Zeigt verwendete und gefundene Chunks
+                - Verarbeitungszeit wird angezeigt
+                - Modell-Informationen sichtbar
+                - Quellen können angezeigt werden
+                - ⚡ Schnell (keine zusätzlichen AI-Calls)
+                """)
+            
+            if st.session_state.debug_mode_ai:
+                st.warning("""
+                **🤖 Debug-Modus mit AI-Funktionen aktiv:**
+                - ⚠️ VORSICHT: Sehr langsam!
+                - 📊 Chunk Coverage Analyse (GPT-4o)
+                - 🔧 Knowledge Gap Bewertung
+                - ⚠️ Hallucination Risk Prüfung
+                - 🔍 Detailliertes Reasoning (2000 tokens)
+                - Sentence-by-sentence Analyse
+                - Konkrete Beispiele und Zitate
+                """)
+        
+        
+        # O-Ton-BASTI-AI2 Info
+        if st.session_state.basti_tone_v2:
+            st.success("""
+            **🎭 O-Ton-BASTI-AI2-Modus aktiv:**
+            - Analysiert Sprachstil aus zurückgegebenen Chunks
+            - Erstellt dynamischen Stil-Leitfaden mit GPT-4o
+            - Passt Antwort-Stil automatisch an Video-Inhalte an
+            - Mehr Varianz, weniger repetitive Formulierungen
+            - Authentischer O-Ton aus den tatsächlichen Videos
+            """)
+        
+        # Nachfrage-Modus Info
+        if st.session_state.iterative_clarification_mode:
+            st.success("""
+            **🔄 Iterativer Nachfrage-Modus aktiv:**
+            - Stellt EINE Nachfrage nach der anderen
+            - Sammelt schrittweise mehr Spezifität
+            - GPT-4o entscheidet, wann genug Info vorhanden ist
+            - Gibt am Ende eine umfassende, maßgeschneiderte Antwort
+            """)
+        elif st.session_state.clarification_mode:
+            st.success("""
+            **🤔 Nachfrage-Modus aktiv:**
+            - Erkennt unspezifische Fragen automatisch
+            - Stellt gezielte Nachfragen für bessere Antworten
+            - Verwendet GPT-4o für intelligente Nachfragen
+            """)
+    
+    # Initialize agent if not done
     if not initialize_agent():
         st.stop()
-
-    apply_selected_chunk_table()
-
-    active_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
-    table_labels = {
-        "video_chunks": "Semantic (Standard)",
-        "video_chunks_recursive": "Recursive",
-        "video_chunks_video_optimized": "Video Optimized",
-        "video_chunks_fixed": "Fixed",
-    }
-    table_label = table_labels.get(active_table, active_table)
-
-    if st.session_state.chunk_table_error:
-        st.markdown(
-            f'<div class="status-strip">⚠️ Fehler beim Setzen der Tabelle: {st.session_state.chunk_table_error}</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f'<div class="status-strip">📊 Aktive Datenbasis: <strong>{table_label}</strong> ({active_table})</div>',
-            unsafe_allow_html=True,
-        )
-
+    
+    # Show test results in main window if available
     if hasattr(st.session_state, 'test_result') and st.session_state.test_result:
         st.markdown("## 📊 Test-Ergebnisse: Vollautomatischer Iterativer Test")
+        
         test_result = st.session_state.test_result
-
+        
+        # Test summary
         st.markdown("### 🎯 Test-Zusammenfassung")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -1506,7 +1588,8 @@ def main():
             st.metric("Anzahl Nachfragen", test_result['num_iterations'])
         with col3:
             st.metric("Test-Dauer", f"{test_result['total_duration']:.2f}s")
-
+        
+        # Iteration history
         st.markdown("### 🔄 Iterationsverlauf")
         for i, iteration in enumerate(test_result['iterations'], 1):
             with st.container():
@@ -1516,18 +1599,21 @@ def main():
                     st.info(f"🤖 **Bot fragt:** {iteration['bot_question']}")
                 with col2:
                     st.success(f"👤 **Auto-Antwort:** {iteration['auto_answer']}")
-
+                
+                # Show metrics
                 metric_col1, metric_col2 = st.columns(2)
                 with metric_col1:
                     st.caption(f"⏱️ Dauer: {iteration['duration']:.2f}s")
                 with metric_col2:
                     st.caption(f"📊 Confidence: {iteration.get('confidence', 0.0):.1%}")
-
+                
                 st.markdown("---")
-
+        
+        # Final answer
         st.markdown("### ✅ Finale Antwort")
         st.success(test_result['final_answer'])
-
+        
+        # Show metrics for final answer
         metric_col1, metric_col2, metric_col3 = st.columns(3)
         with metric_col1:
             st.metric("Confidence", f"{test_result['final_confidence']:.1%}")
@@ -1537,11 +1623,12 @@ def main():
         with metric_col3:
             if 'total_chunks_found' in test_result:
                 st.metric("Chunks gefunden", test_result['total_chunks_found'])
-
+        
+        # Show debug info if available
         if 'debug_info' in test_result and test_result['debug_info']:
             with st.expander("🔍 Debug-Informationen", expanded=False):
                 debug_info = test_result['debug_info']
-
+                
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write("**Verarbeitungsdetails:**")
@@ -1549,30 +1636,33 @@ def main():
                     st.write(f"• Verarbeitungszeit: {debug_info.get('processing_time', 'N/A')}s")
                     st.write(f"• Chunks verwendet: {debug_info.get('chunks_used', 'N/A')}")
                     st.write(f"• Chunks gefunden: {debug_info.get('total_chunks', 'N/A')}")
-
+                
                 with col2:
                     st.write("**Modi:**")
-                    basti_tone_status = "✅ Aktiv" if debug_info.get('basti_tone', False) else "❌ Inaktiv"
-                    basti_tone_v2_status = "✅ Aktiv" if debug_info.get('basti_tone_v2', False) else "❌ Inaktiv"
+                    basti_tone = "✅ Aktiv" if debug_info.get('basti_tone', False) else "❌ Inaktiv"
+                    basti_tone_v2 = "✅ Aktiv" if debug_info.get('basti_tone_v2', False) else "❌ Inaktiv"
                     clarification = "✅ Aktiv" if debug_info.get('clarification_mode', False) else "❌ Inaktiv"
-                    st.write(f"• Basti O-Ton: {basti_tone_status}")
-                    st.write(f"• O-Ton-BASTI-AI2: {basti_tone_v2_status}")
+                    st.write(f"• Basti O-Ton: {basti_tone}")
+                    st.write(f"• O-Ton-BASTI-AI2: {basti_tone_v2}")
                     st.write(f"• Nachfrage-Modus: {clarification}")
-
+                
+                # Show sources
                 if 'sources' in debug_info and debug_info['sources']:
                     st.markdown("**📚 Verwendete Quellen:**")
-                    for i, source in enumerate(debug_info['sources'][:5], 1):
+                    for i, source in enumerate(debug_info['sources'][:5], 1):  # Show first 5
                         timestamp = source.get('timestamp', 0)
                         minutes = int(timestamp // 60)
                         seconds = int(timestamp % 60)
                         speaker = source.get('speaker', 'Unknown')
                         text = source.get('text', '')[:100]
                         st.markdown(f"{i}. **[{minutes:02d}:{seconds:02d}] {speaker}:** {text}...")
-
+        
+        # Show quality analysis if available
         if 'quality_scores' in test_result and test_result['quality_scores']:
             with st.expander("🤖 AI-Qualitätsanalyse", expanded=False):
                 quality_scores = test_result['quality_scores']
-
+                
+                # Metrics
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     coverage = quality_scores.get('chunk_coverage', 0)
@@ -1583,27 +1673,33 @@ def main():
                 with col3:
                     hallucination = quality_scores.get('hallucination_risk', 0)
                     st.metric("⚠️ Hallucination Risk", f"{hallucination:.1f}%")
-
+                
+                # Analysis details
                 if quality_scores.get('analysis_details'):
                     st.markdown("**Zusammenfassung:**")
                     st.info(quality_scores['analysis_details'])
-
+                
+                # Detailed reasoning
                 if quality_scores.get('detailed_reasoning'):
                     st.markdown("**Detailliertes Reasoning:**")
                     st.text_area("", quality_scores['detailed_reasoning'], height=200, disabled=True)
-
+        
+        # Action buttons
         button_col1, button_col2 = st.columns(2)
         with button_col1:
             if st.button("📋 In Chat anzeigen", use_container_width=True):
+                # Add test result to chat history
                 if 'chat_history' not in st.session_state:
                     st.session_state.chat_history = []
-
+                
+                # Add initial question
                 st.session_state.chat_history.append({
                     'type': 'user',
                     'content': test_result['initial_question'],
                     'timestamp': datetime.now().strftime("%H:%M:%S")
                 })
-
+                
+                # Add final answer
                 st.session_state.chat_history.append({
                     'type': 'bot',
                     'content': test_result['final_answer'],
@@ -1612,73 +1708,127 @@ def main():
                     'debug_info': test_result.get('debug_info', {}),
                     'quality_scores': test_result.get('quality_scores', {})
                 })
-
+                
                 st.success("✅ Test-Ergebnis zum Chat hinzugefügt!")
-                rerun_app()
-
+                st.rerun()
+        
         with button_col2:
             if st.button("🗑️ Test-Ergebnisse löschen", use_container_width=True):
                 del st.session_state.test_result
-                rerun_app()
-
-    st.markdown("### 💬 Chat")
-    display_chat_history()
-
-    form_submitted = False
-    question = ""
-    st.markdown('<div class="chat-input-card">', unsafe_allow_html=True)
-    with st.form(key="question_form", clear_on_submit=True):
-        question = st.text_area(
-            "Stellen Sie eine Frage zu den Video-Inhalten:",
-            placeholder="Z.B. Was ist das Hauptthema des Videos?",
-            key="question_input",
-            label_visibility="collapsed",
-            height=140,
-        )
-        submit_columns = st.columns([5, 1.2])
-        with submit_columns[1]:
-            form_submitted = st.form_submit_button("Senden")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if form_submitted:
-        if question.strip():
-            user_message = {
-                'type': 'user',
-                'content': question,
-                'timestamp': datetime.now().strftime("%H:%M:%S")
-            }
-            st.session_state.chat_history.append(user_message)
-
-            with st.spinner("Suche nach relevanten Inhalten..."):
-                response = process_question(question)
-
-            if response:
-                bot_message = {
-                    'type': 'bot',
-                    'content': response['answer'],
-                    'confidence': response['confidence'],
-                    'timestamp': datetime.now().strftime("%H:%M:%S"),
-                    'debug_info': response.get('debug_info', {}),
-                    'clarification_mode': response.get('clarification_mode', False),
-                    'original_question': response.get('original_question', question),
-                    'needs_analysis': response.get('needs_analysis', False),
-                    'quality_scores': response.get('quality_scores', {})
+                st.rerun()
+        
+        st.divider()
+    
+    # Main content area with chat layout
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        # Chat interface
+        st.subheader("💬 Chat")
+        
+        # Show active chunk table info
+        active_table = st.session_state.get('selected_chunk_table', 'video_chunks_video_optimized')
+        table_labels = {
+            'video_chunks': 'Semantic (Standard)',
+            'video_chunks_recursive': 'Recursive',
+            'video_chunks_video_optimized': 'Video Optimized',
+            'video_chunks_fixed': 'Fixed'
+        }
+        table_label = table_labels.get(active_table, active_table)
+        st.info(f"📊 Aktive Datenbasis: **{table_label}** ({active_table})")
+        
+        # Display chat history first (at the top)
+        display_chat_history()
+        
+        # Chat input at the bottom
+        st.divider()
+        
+        # Center the input section
+        col_left, col_center, col_right = st.columns([1, 3, 1])
+        
+        with col_center:
+            # Use form for proper Enter key handling
+            with st.form(key="question_form", clear_on_submit=True):
+                col_input, col_send = st.columns([7.5, 1.5])
+                
+                with col_input:
+                    question = st.text_area(
+                        "Stellen Sie eine Frage zu den Video-Inhalten:",
+                        placeholder="z.B. Was ist das Hauptthema des Videos?",
+                        key="question_input",
+                        label_visibility="collapsed",
+                        height=120  # 4-5 lines height
+                    )
+                
+                with col_send:
+                    # Submit button inside form
+                    form_submitted = st.form_submit_button(
+                        "Go", 
+                        type="primary", 
+                        use_container_width=True
+                    )
+        
+        # Process question if form submitted
+        if form_submitted:
+            if question.strip():
+                # Add user message to history
+                user_message = {
+                    'type': 'user',
+                    'content': question,
+                    'timestamp': datetime.now().strftime("%H:%M:%S")
                 }
-                st.session_state.chat_history.append(bot_message)
-
-            rerun_app()
-        else:
-            note_block("⚠️ Bitte geben Sie eine Frage ein.")
-
-    st.markdown(
-        """
-        <div style="text-align: center; color: rgba(255, 255, 255, 0.55); font-size: 0.8rem; letter-spacing: 0.32em; margin-top: 3rem;">
-            BastiAI · Powered by Umsetzer · Version 3.0
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+                st.session_state.chat_history.append(user_message)
+                
+                # Process question
+                with st.spinner("Suche nach relevanten Inhalten..."):
+                    response = process_question(question)
+                
+                if response:
+                    # Add bot response to history
+                    bot_message = {
+                        'type': 'bot',
+                        'content': response['answer'],
+                        'confidence': response['confidence'],
+                        'timestamp': datetime.now().strftime("%H:%M:%S"),
+                        'debug_info': response.get('debug_info', {}),
+                        'clarification_mode': response.get('clarification_mode', False),
+                        'original_question': response.get('original_question', question),
+                        'needs_analysis': response.get('needs_analysis', False),
+                        'quality_scores': response.get('quality_scores', {})
+                    }
+                    st.session_state.chat_history.append(bot_message)
+                
+                # Form automatically clears on submit
+                
+                # Rerun to update display
+                st.rerun()
+            else:
+                st.warning("Bitte geben Sie eine Frage ein.")
+    
+    with col2:
+        # Statistics
+        st.subheader("📊 Statistiken")
+        
+        total_messages = len(st.session_state.chat_history)
+        user_messages = len([m for m in st.session_state.chat_history if m['type'] == 'user'])
+        bot_messages = len([m for m in st.session_state.chat_history if m['type'] == 'bot'])
+        
+        st.metric("Gesamt Nachrichten", total_messages)
+        st.metric("Fragen gestellt", user_messages)
+        st.metric("Antworten erhalten", bot_messages)
+        
+        if bot_messages > 0:
+            avg_confidence = sum([m['confidence'] for m in st.session_state.chat_history if m['type'] == 'bot']) / bot_messages
+            st.metric("Ø Vertrauen", f"{avg_confidence:.1%}")
+    
+    # Footer
+    st.divider()
+    st.markdown("""
+    <div style="text-align: center; color: #666; font-size: 0.8rem;">
+        BastiAI - Powered by OpenAI & Supabase<br>
+        Version 2.7.0 - Chunk Table Selection & Video Optimized Default
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
